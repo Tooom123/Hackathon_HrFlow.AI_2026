@@ -3,6 +3,7 @@ uvicorn[standard]
 httpx
 pydantic-settings
 python-dotenv
+python-multipart
 websockets
 torch
 torchaudio
