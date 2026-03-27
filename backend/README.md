@@ -35,3 +35,18 @@ Les schemas de validation restent dans `schemas/` pour separer clairement transp
 - `schemas/` decrit les contrats d'entree/sortie de ton API
 
 Cette separation evite de melanger logique produit et details des fournisseurs externes.
+
+## Run minimal
+
+Depuis `backend/` :
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+API locale :
+- `GET /health`
+- docs Swagger sur `/docs`
