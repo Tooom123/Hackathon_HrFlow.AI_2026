@@ -34,6 +34,7 @@ class Answer:
     transcript: str
     audio_duration_s: float
     llm_evaluation: str
+    score: int  # 0-10
     follow_up_asked: bool
 
 

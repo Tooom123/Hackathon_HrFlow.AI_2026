@@ -334,6 +334,118 @@ class HrFlowService:
         return questions, job_title or f"Job {job_key}"
 
     # ------------------------------------------------------------------
+    # Interview results → profile metadata
+    # ------------------------------------------------------------------
+
+    async def save_interview_to_profile(
+        self,
+        profile_reference: str,
+        answers: list[dict],
+        global_score: float,
+        source_key: Optional[str] = None,
+    ) -> dict:
+        """Persist interview answers + scores as metadata on the HrFlow profile.
+
+        Metadata written:
+            interview_question_N   → question text
+            interview_answer_N     → candidate transcript
+            interview_score_N      → score 0-10
+            interview_evaluation_N → LLM evaluation
+            interview_global_score → average score (rounded, 0-10)
+            interview_completed_at → ISO timestamp
+
+        Args:
+            profile_reference: Reference returned by /profiles/apply.
+            answers: List of dicts with keys question, transcript, score, evaluation.
+            global_score: Pre-computed average score.
+        """
+        from datetime import datetime, timezone
+
+        resolved_source_key = source_key or settings.hrflow_source_key
+        headers = _auth_headers()
+
+        # 1. GET profile by reference to retrieve key + required info fields
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            get_resp = await client.get(
+                f"{HRFLOW_API_BASE}/profile/indexing",
+                headers=headers,
+                params={"source_key": resolved_source_key, "reference": profile_reference},
+            )
+            logger.info("[save_interview] GET profile status=%s body=%s", get_resp.status_code, get_resp.text[:300])
+            if not get_resp.is_success:
+                raise ValueError(f"HrFlow GET profile {get_resp.status_code}: {get_resp.text}")
+            profile_data = get_resp.json().get("data") or {}
+
+        if not profile_data:
+            raise ValueError(f"Profile not found for reference: {profile_reference}")
+
+        profile_key = profile_data.get("key", "")
+        info = profile_data.get("info") or {}
+        logger.info("[save_interview] profile_key=%r info_keys=%s", profile_key, list(info.keys()))
+
+        # 2. Build metadata list with answers + scores
+        metadatas: list[dict] = []
+        for i, answer in enumerate(answers):
+            metadatas += [
+                {"name": f"interview_question_{i}", "value": answer.get("question", "")},
+                {"name": f"interview_answer_{i}", "value": answer.get("transcript", "")},
+                {"name": f"interview_score_{i}", "value": str(answer.get("score", 0))},
+                {"name": f"interview_evaluation_{i}", "value": answer.get("evaluation", "")},
+            ]
+
+        metadatas += [
+            {"name": "interview_global_score", "value": str(round(global_score, 1))},
+            {"name": "interview_completed_at", "value": datetime.now(timezone.utc).isoformat()},
+        ]
+
+        # 3. PUT profile — keep all existing fields, only override metadatas
+        payload = {
+            "source_key": resolved_source_key,
+            "profile": {
+                "key": profile_key,
+                "reference": profile_reference,
+                "info": {
+                    "full_name": info.get("full_name", ""),
+                    "first_name": info.get("first_name", ""),
+                    "last_name": info.get("last_name", ""),
+                    "email": info.get("email", ""),
+                    "phone": info.get("phone", ""),
+                    "summary": info.get("summary", ""),
+                    "location": info.get("location") or {"text": ""},
+                    "urls": info.get("urls") or {},
+                },
+                "text": profile_data.get("text", ""),
+                "text_language": profile_data.get("text_language", ""),
+                "experiences": profile_data.get("experiences") or [],
+                "educations": profile_data.get("educations") or [],
+                "skills": profile_data.get("skills") or [],
+                "languages": profile_data.get("languages") or [],
+                "certifications": profile_data.get("certifications") or [],
+                "courses": profile_data.get("courses") or [],
+                "tasks": profile_data.get("tasks") or [],
+                "interests": profile_data.get("interests") or [],
+                "tags": profile_data.get("tags") or [],
+                "labels": profile_data.get("labels") or [],
+                "metadatas": metadatas,
+            },
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            put_resp = await client.put(
+                f"{HRFLOW_API_BASE}/profile/indexing",
+                headers={**headers, "content-type": "application/json"},
+                json=payload,
+            )
+            if not put_resp.is_success:
+                raise ValueError(f"HrFlow PUT profile {put_resp.status_code}: {put_resp.text}")
+
+        logger.info(
+            "[save_interview] Saved %d answers (global score: %.1f) to profile %s",
+            len(answers), global_score, profile_reference,
+        )
+        return put_resp.json()
+
+    # ------------------------------------------------------------------
     # Profiles (candidat — ne pas modifier)
     # ------------------------------------------------------------------
 
@@ -344,27 +456,69 @@ class HrFlowService:
         page: int = 1,
         limit: int = 30,
     ) -> dict:
-        """Return profiles linked to a job by filtering on the job_key tag."""
+        """Return full profiles (with metadatas) linked to a job.
+
+        /profiles/searching returns lightweight profiles without metadatas.
+        We enrich each matched profile via GET /profile/indexing to include
+        the full object (metadatas, interview results, etc.).
+        """
+        resolved_source_key = source_key or settings.hrflow_source_key
         headers = {"X-API-KEY": settings.api_key, "X-USER-EMAIL": settings.user_email}
+
+        # 1. Search for profiles in the source
         params = {
-            "source_keys": json.dumps([source_key or settings.hrflow_source_key]),
+            "source_keys": json.dumps([resolved_source_key]),
             "page": page,
             "limit": 100,
         }
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{HRFLOW_API_BASE}/profiles/searching", headers=headers, params=params)
+            response = await client.get(
+                f"{HRFLOW_API_BASE}/profiles/searching",
+                headers=headers,
+                params=params,
+            )
             if not response.is_success:
                 raise ValueError(f"HrFlow {response.status_code}: {response.text}")
             data = response.json()
 
         all_profiles = (data.get("data") or {}).get("profiles") or []
+
+        # 2. Filter by job_key tag
         matched = [
             p for p in all_profiles
-            if any(t.get("name") == "job_key" and t.get("value") == job_key for t in (p.get("tags") or []))
+            if any(
+                t.get("name") == "job_key" and t.get("value") == job_key
+                for t in (p.get("tags") or [])
+            )
         ]
+
         start = (page - 1) * limit
         paginated = matched[start: start + limit]
-        return {"code": 200, "data": {"profiles": paginated}, "meta": {"page": page, "count": len(paginated), "total": len(matched)}}
+
+        # 3. Enrich each profile with full data (metadatas included)
+        enriched: list[dict] = []
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for profile in paginated:
+                ref = profile.get("reference") or profile.get("key")
+                if not ref:
+                    enriched.append(profile)
+                    continue
+                detail_resp = await client.get(
+                    f"{HRFLOW_API_BASE}/profile/indexing",
+                    headers=headers,
+                    params={"source_key": resolved_source_key, "reference": ref},
+                )
+                if detail_resp.is_success:
+                    full = detail_resp.json().get("data") or profile
+                    enriched.append(full)
+                else:
+                    enriched.append(profile)
+
+        return {
+            "code": 200,
+            "data": {"profiles": enriched},
+            "meta": {"page": page, "count": len(enriched), "total": len(matched)},
+        }
 
     async def upload_cv_for_job(
         self,

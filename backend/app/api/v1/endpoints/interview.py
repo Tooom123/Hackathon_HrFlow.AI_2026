@@ -134,10 +134,13 @@ async def get_session(session_id: str) -> dict:
         "current_question_index": session.current_question_index,
         "total_questions": len(session.questions),
         "answers_count": len(session.answers),
+        "global_score": round(sum(a.score for a in session.answers) / len(session.answers), 1) if session.answers else None,
         "answers": [
             {
                 "question_id": a.question_id,
+                "question": session.questions[int(a.question_id)].text if int(a.question_id) < len(session.questions) else "",
                 "transcript": a.transcript,
+                "score": a.score,
                 "evaluation": a.llm_evaluation,
                 "follow_up_asked": a.follow_up_asked,
             }
@@ -241,9 +244,11 @@ async def interview_websocket(websocket: WebSocket, session_id: str) -> None:
                 })
 
         # Interview complete
+        global_score = sum(a.score for a in session.answers) / len(session.answers) if session.answers else 0
         await _send_json(websocket, WSMessageType.STATE_CHANGE, {
             "state": SessionState.DONE.value,
             "total_answers": len(session.answers),
+            "global_score": round(global_score, 1),
         })
         await websocket.close()
 

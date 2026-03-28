@@ -24,12 +24,19 @@ Réponds UNIQUEMENT avec un JSON valide (sans markdown) au format:
 {
   "decision": "next_question" ou "follow_up",
   "evaluation": "évaluation brève de la réponse (1-2 phrases)",
+  "score": <entier entre 0 et 10>,
   "follow_up_text": "question de relance si decision=follow_up, sinon null"
 }
 
-Règles:
-- Si la réponse est suffisamment complète → "next_question"
-- Si la réponse est vague, incomplète ou hors sujet → "follow_up" avec une relance ciblée
+Règles pour le score:
+- 0-3  : réponse hors sujet, incompréhensible ou absente
+- 4-6  : réponse partielle, manque de précision ou d'exemples
+- 7-8  : bonne réponse, maîtrise correcte du sujet
+- 9-10 : réponse excellente, précise, structurée avec exemples concrets
+
+Règles pour la décision:
+- Si la réponse est suffisamment complète (score >= 5) → "next_question"
+- Si la réponse est vague, incomplète ou hors sujet (score < 5) → "follow_up"
 - La relance doit être courte et naturelle (comme à l'oral)
 - Maximum 1 relance par question
 """
@@ -50,6 +57,7 @@ class LLMDecision(str, Enum):
 class EvaluationResult:
     decision: LLMDecision
     evaluation: str
+    score: int  # 0-10
     follow_up_text: str | None
 
 
@@ -77,18 +85,14 @@ class LLMService:
         candidate_answer: str,
         job_context: str,
     ) -> EvaluationResult:
-        """Evaluate a candidate's answer and decide next action."""
+        """Evaluate a candidate's answer, score it, and decide next action."""
         user_prompt = (
             f"Contexte du poste: {job_context}\n\n"
             f"Question posée: {question_text}\n\n"
             f"Réponse du candidat: {candidate_answer}"
         )
 
-        raw = await self._chat(
-            system=EVALUATE_SYSTEM_PROMPT,
-            user=user_prompt,
-        )
-
+        raw = await self._chat(system=EVALUATE_SYSTEM_PROMPT, user=user_prompt)
         return self._parse_evaluation(raw)
 
     async def generate_introduction(self, job_title: str) -> str:
@@ -99,7 +103,6 @@ class LLMService:
         )
 
     async def _chat(self, system: str, user: str) -> str:
-        """Send a chat completion request to Ollama."""
         payload = {
             "model": self._config.model,
             "messages": [
@@ -115,9 +118,7 @@ class LLMService:
 
         response = await self._client.post("/api/chat", json=payload)
         response.raise_for_status()
-
-        data = response.json()
-        return data["message"]["content"]
+        return response.json()["message"]["content"]
 
     def _parse_evaluation(self, raw: str) -> EvaluationResult:
         """Parse LLM JSON response into EvaluationResult."""
@@ -128,6 +129,7 @@ class LLMService:
             return EvaluationResult(
                 decision=LLMDecision.NEXT_QUESTION,
                 evaluation=raw[:200],
+                score=5,
                 follow_up_text=None,
             )
 
@@ -137,9 +139,16 @@ class LLMService:
         except ValueError:
             decision = LLMDecision.NEXT_QUESTION
 
+        raw_score = parsed.get("score", 5)
+        try:
+            score = max(0, min(10, int(raw_score)))
+        except (TypeError, ValueError):
+            score = 5
+
         return EvaluationResult(
             decision=decision,
             evaluation=parsed.get("evaluation", ""),
+            score=score,
             follow_up_text=parsed.get("follow_up_text"),
         )
 

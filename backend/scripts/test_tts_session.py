@@ -37,7 +37,7 @@ async def main(job_key: str) -> None:
         print("\n[2/3] Joining session...")
         resp = await client.post(
             f"/interview/sessions/{session_id}/join",
-            params={"profile_reference": "test-bypass"},
+            params={"profile_reference": "f3b7171b-0ab7-4b45-bbe2-a887b0fd83cd"},
         )
         resp.raise_for_status()
         ws_url = resp.json()["ws_url"]
