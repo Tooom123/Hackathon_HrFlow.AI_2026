@@ -16,6 +16,7 @@ from base64 import b64encode
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 
 from app.core.config import settings
 from app.dependencies.hrflow import get_hrflow_service
@@ -217,6 +218,9 @@ async def interview_websocket(websocket: WebSocket, session_id: str) -> None:
         # Main loop: receive audio chunks or mock text answers
         while session.state != SessionState.DONE:
             raw = await websocket.receive()
+            if raw["type"] == "websocket.disconnect":
+                logger.info("WebSocket disconnected for session %s", session_id)
+                return
 
             # Mock mode: client sends {"type": "mock_answer", "text": "..."}
             if raw["type"] == "websocket.receive" and raw.get("text"):
@@ -272,16 +276,17 @@ async def interview_websocket(websocket: WebSocket, session_id: str) -> None:
             "total_answers": len(session.answers),
             "global_score": round(global_score, 1),
         })
-        await websocket.close()
+        await _close_websocket(websocket)
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected for session %s", session_id)
     except Exception:
         logger.exception("Error in interview WebSocket for session %s", session_id)
-        await _send_json(websocket, WSMessageType.ERROR, {
-            "message": "Internal server error",
-        })
-        await websocket.close(code=1011)
+        if _can_send(websocket):
+            await _send_json(websocket, WSMessageType.ERROR, {
+                "message": "Internal server error",
+            })
+        await _close_websocket(websocket, code=1011)
 
 
 # ------------------------------------------------------------------
@@ -329,15 +334,22 @@ async def _init_orchestrator(session: InterviewSession) -> SessionOrchestrator:
 
 
 async def _send_json(ws: WebSocket, msg_type: WSMessageType, data: dict) -> None:
+    if not _can_send(ws):
+        return
     await ws.send_json({"type": msg_type.value, **data})
 
 
 async def _send_audio(ws: WebSocket, audio: bytes) -> None:
     """Send audio in chunks to avoid WebSocket frame size limits."""
+    if not _can_send(ws):
+        return
+
     chunk_size = settings.tts_chunk_size
     total_chunks = (len(audio) + chunk_size - 1) // chunk_size
 
     for i in range(0, len(audio), chunk_size):
+        if not _can_send(ws):
+            return
         chunk = audio[i : i + chunk_size]
         await ws.send_json({
             "type": WSMessageType.AUDIO_CHUNK.value,
@@ -347,3 +359,20 @@ async def _send_audio(ws: WebSocket, audio: bytes) -> None:
             "format": "pcm_s16le",
             "sample_rate": settings.tts_sample_rate,
         })
+
+
+def _can_send(ws: WebSocket) -> bool:
+    return (
+        ws.application_state != WebSocketState.DISCONNECTED
+        and ws.client_state != WebSocketState.DISCONNECTED
+    )
+
+
+async def _close_websocket(ws: WebSocket, code: int = 1000) -> None:
+    if ws.application_state == WebSocketState.DISCONNECTED:
+        return
+
+    try:
+        await ws.close(code=code)
+    except RuntimeError:
+        logger.debug("WebSocket already closed while attempting close")
