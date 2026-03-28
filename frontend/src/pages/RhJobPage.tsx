@@ -4,6 +4,7 @@ import { getProfilesForJob, scoreProfiles, getSessionForJob, createInterviewSess
 interface Props {
   job: JobCard
   onBack: () => void
+  onOpenProfile: (profile: Profile, matchScore: number | null) => void
 }
 
 function Logo() {
@@ -174,7 +175,7 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
 
 type LinkState = 'idle' | 'creating' | 'ready'
 
-export default function RhJobPage({ job, onBack }: Props) {
+export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [total, setTotal] = useState(0)
   const [matchScores, setMatchScores] = useState<Record<string, number>>({})

@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import type { JobCard, SetupJobResponse } from '../api/hrflow'
+import type { JobCard, Profile, SetupJobResponse } from '../api/hrflow'
 import RhHomePage from './RhHomePage'
 import RhSetupPage from './RhSetupPage'
 import RhQuestionsPage from './RhQuestionsPage'
 import RhJobPage from './RhJobPage'
 import RhSessionLinkPage from './RhSessionLinkPage'
+import RhInterviewPage from './RhInterviewPage'
 
-type Step = 'home' | 'setup' | 'questions' | 'session-link' | 'job'
+type Step = 'home' | 'setup' | 'questions' | 'session-link' | 'job' | 'interview'
 
 interface SessionState {
   result: SetupJobResponse
@@ -18,6 +19,8 @@ export default function RecruiterApp() {
   const [session, setSession] = useState<SessionState | null>(null)
   const [recentJob, setRecentJob] = useState<JobCard | null>(null)
   const [selectedJob, setSelectedJob] = useState<JobCard | null>(null)
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
+  const [selectedProfileMatchScore, setSelectedProfileMatchScore] = useState<number | null>(null)
 
   if (step === 'setup') {
     return (
@@ -63,11 +66,27 @@ export default function RecruiterApp() {
     )
   }
 
+  if (step === 'interview' && selectedJob && selectedProfile) {
+    return (
+      <RhInterviewPage
+        job={selectedJob}
+        profile={selectedProfile}
+        matchScore={selectedProfileMatchScore}
+        onBack={() => setStep('job')}
+      />
+    )
+  }
+
   if (step === 'job' && selectedJob) {
     return (
       <RhJobPage
         job={selectedJob}
         onBack={() => setStep('home')}
+        onOpenProfile={(profile, matchScore) => {
+          setSelectedProfile(profile)
+          setSelectedProfileMatchScore(matchScore)
+          setStep('interview')
+        }}
       />
     )
   }
