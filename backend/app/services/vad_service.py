@@ -16,6 +16,7 @@ import torch
 @dataclass
 class VADConfig:
     sample_rate: int = 16_000
+    input_sample_rate: int = 24_000  # sample rate of incoming audio from client
     threshold: float = 0.5
     min_silence_duration_ms: int = 700
     min_speech_duration_ms: int = 250
@@ -29,6 +30,7 @@ class VADService:
         self._config = config or VADConfig()
         self._model: torch.jit.ScriptModule | None = None
         self._speech_buffer: bytearray = bytearray()
+        self._resample_buffer: bytearray = bytearray()
         self._is_speaking: bool = False
         self._silence_samples: int = 0
         self._speech_samples: int = 0
@@ -47,8 +49,48 @@ class VADService:
         )
         return model
 
+    def _resample_chunk(self, chunk: bytes) -> bytes:
+        """Resample incoming audio from input_sample_rate to VAD sample_rate (16 kHz)."""
+        src_rate = self._config.input_sample_rate
+        dst_rate = self._config.sample_rate
+        if src_rate == dst_rate:
+            return chunk
+
+        self._resample_buffer.extend(chunk)
+
+        # Number of input samples available
+        n_src = len(self._resample_buffer) // 2
+        if n_src == 0:
+            return b""
+
+        src_samples = struct.unpack(f"<{n_src}h", bytes(self._resample_buffer[:n_src * 2]))
+
+        # How many output samples we can produce
+        n_dst = int(n_src * dst_rate / src_rate)
+        if n_dst == 0:
+            return b""
+
+        # Consume the input samples we'll use
+        # Exact number of input samples consumed for n_dst output samples
+        n_consumed = int(n_dst * src_rate / dst_rate)
+        self._resample_buffer = self._resample_buffer[n_consumed * 2:]
+
+        # Linear interpolation
+        out = []
+        for i in range(n_dst):
+            src_pos = i * src_rate / dst_rate
+            idx = int(src_pos)
+            frac = src_pos - idx
+            if idx + 1 < n_consumed:
+                val = src_samples[idx] * (1 - frac) + src_samples[idx + 1] * frac
+            else:
+                val = src_samples[min(idx, n_consumed - 1)]
+            out.append(int(max(-32768, min(32767, val))))
+
+        return struct.pack(f"<{n_dst}h", *out)
+
     async def feed_chunk(self, chunk: bytes) -> tuple[bytes, float] | None:
-        """Feed a raw PCM 16-bit audio chunk.
+        """Feed a raw PCM 16-bit audio chunk (at input_sample_rate).
 
         Returns:
             (audio_bytes, duration_s) when end-of-speech detected, else None.
@@ -56,7 +98,11 @@ class VADService:
         if self._model is None:
             raise RuntimeError("VAD model not loaded — call load_model() first")
 
-        self._speech_buffer.extend(chunk)
+        resampled = self._resample_chunk(chunk)
+        if not resampled:
+            return None
+
+        self._speech_buffer.extend(resampled)
 
         window = self._config.window_size_samples
         bytes_per_window = window * 2  # 16-bit = 2 bytes per sample
@@ -107,6 +153,7 @@ class VADService:
     def reset(self) -> None:
         """Reset internal VAD state between questions."""
         self._speech_buffer.clear()
+        self._resample_buffer.clear()
         self._reset_state()
         if self._model is not None:
             self._model.reset_states()

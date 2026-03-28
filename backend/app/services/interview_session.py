@@ -193,7 +193,13 @@ class SessionOrchestrator:
         return round(sum(scores) / len(scores), 1) if scores else 0.0
 
     async def _persist_to_hrflow(self, global_score: float) -> None:
-        """Save interview results to HrFlow profile metadata."""
+        """Save interview results to HrFlow profile metadata.
+
+        Retries up to 3 times with 5s delay because the profile may still be
+        parsing asynchronously after the CV upload.
+        """
+        import asyncio
+
         profile_reference = self.session.candidate_profile_reference
         if not profile_reference or profile_reference == "test-bypass":
             logger.info("[persist] Skipping HrFlow save (no real profile_reference)")
@@ -202,6 +208,7 @@ class SessionOrchestrator:
         from app.services.hrflow_service import HrFlowService
 
         hrflow = HrFlowService()
+        final_answers = [a for a in self.session.answers if not a.follow_up_asked] or self.session.answers
         answers_payload = [
             {
                 "question": self.session.questions[int(a.question_id)].text
@@ -210,17 +217,27 @@ class SessionOrchestrator:
                 "score": a.score,
                 "evaluation": a.llm_evaluation,
             }
-            for a in self.session.answers
+            for a in final_answers
         ]
 
-        try:
-            await hrflow.save_interview_to_profile(
-                profile_reference=profile_reference,
-                answers=answers_payload,
-                global_score=global_score,
-            )
-        except Exception:
-            logger.exception("[persist] Failed to save interview results to HrFlow profile")
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info(
+                    "[persist] Attempt %d/%d — saving %d answers (score=%.1f) for profile %s",
+                    attempt, max_retries, len(answers_payload), global_score, profile_reference,
+                )
+                await hrflow.save_interview_to_profile(
+                    profile_reference=profile_reference,
+                    answers=answers_payload,
+                    global_score=global_score,
+                )
+                logger.info("[persist] Successfully saved interview results to HrFlow profile %s", profile_reference)
+                return
+            except Exception:
+                logger.exception("[persist] Attempt %d/%d failed for profile %s", attempt, max_retries, profile_reference)
+                if attempt < max_retries:
+                    await asyncio.sleep(5)
 
     async def _ask_question(self, text: str) -> SessionEvent:
         """Synthesize a question/follow-up into audio and update state."""

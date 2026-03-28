@@ -22,20 +22,17 @@ async def load_models() -> None:
     """Load all heavy models into memory. Call once at app startup."""
     global _tts, _vad_config
 
-    logger.info("[registry] Loading TTS model (Chatterbox)...")
-    try:
-        _tts = TTSService(TTSConfig(
-            sample_rate=settings.tts_sample_rate,
-            chunk_size=settings.tts_chunk_size,
-        ))
-        await _tts.load_model()
-        logger.info("[registry] TTS model ready.")
-    except Exception as exc:
-        logger.warning("[registry] TTS model failed to load (%s) — TTS endpoints will be unavailable.", exc)
-        _tts = None
+    logger.info("[registry] Initializing TTS (Edge-TTS, voice=%s)...", settings.tts_voice)
+    _tts = TTSService(TTSConfig(
+        voice=settings.tts_voice,
+        sample_rate=settings.tts_sample_rate,
+        chunk_size=settings.tts_chunk_size,
+    ))
+    logger.info("[registry] TTS ready.")
 
     _vad_config = VADConfig(
         threshold=settings.vad_threshold,
+        input_sample_rate=settings.vad_input_sample_rate,
         min_silence_duration_ms=settings.vad_min_silence_ms,
         min_speech_duration_ms=settings.vad_min_speech_ms,
     )

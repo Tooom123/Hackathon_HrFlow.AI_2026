@@ -1,44 +1,38 @@
-"""Text-to-Speech service using Chatterbox TTS.
+"""Text-to-Speech service using Microsoft Edge-TTS.
 
 Converts text (questions, follow-ups) into audio chunks that can be
 streamed back to the client over WebSocket.
+
+Voices available for French:
+  - fr-FR-HenriNeural   (male)
+  - fr-FR-DeniseNeural  (female)
 """
 
 from __future__ import annotations
 
-import asyncio
 import io
 import struct
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
-import torch
-import torchaudio
+import edge_tts
 
 
 @dataclass
 class TTSConfig:
+    voice: str = "fr-FR-HenriNeural"
     sample_rate: int = 24_000
     chunk_size: int = 4096  # bytes per streamed chunk
-    device: str = "mps"  # Apple Silicon GPU
 
 
 class TTSService:
-    """Wraps Chatterbox for local text-to-speech synthesis."""
+    """Wraps Edge-TTS for cloud text-to-speech synthesis in French."""
 
     def __init__(self, config: TTSConfig | None = None) -> None:
         self._config = config or TTSConfig()
-        self._model = None
 
     async def load_model(self) -> None:
-        """Load the Chatterbox TTS model. Call once at startup."""
-        loop = asyncio.get_event_loop()
-        self._model = await loop.run_in_executor(None, self._load_chatterbox)
-
-    def _load_chatterbox(self):
-        from chatterbox.tts import ChatterboxTTS
-
-        return ChatterboxTTS.from_pretrained(device=self._config.device)
+        """No-op — Edge-TTS is a cloud service, no local model to load."""
 
     async def synthesize(self, text: str) -> bytes:
         """Synthesize full audio from text.
@@ -46,14 +40,21 @@ class TTSService:
         Returns:
             Raw PCM 16-bit audio bytes at configured sample_rate.
         """
-        if self._model is None:
-            raise RuntimeError("TTS model not loaded — call load_model() first")
-
-        wav_tensor = await asyncio.get_event_loop().run_in_executor(
-            None, self._generate, text,
+        communicate = edge_tts.Communicate(
+            text,
+            voice=self._config.voice,
         )
 
-        return self._tensor_to_pcm(wav_tensor)
+        # Edge-TTS returns MP3 by default — collect full MP3 then convert
+        mp3_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                mp3_data += chunk["data"]
+
+        if not mp3_data:
+            return b""
+
+        return self._mp3_to_pcm(mp3_data)
 
     async def synthesize_stream(self, text: str) -> AsyncIterator[bytes]:
         """Synthesize audio and yield chunks for streaming."""
@@ -63,15 +64,23 @@ class TTSService:
         for i in range(0, len(full_audio), chunk_size):
             yield full_audio[i : i + chunk_size]
 
-    def _generate(self, text: str) -> torch.Tensor:
-        """Run Chatterbox generation (blocking)."""
-        return self._model.generate(text)
+    def _mp3_to_pcm(self, mp3_data: bytes) -> bytes:
+        """Convert MP3 bytes to PCM 16-bit mono at target sample rate."""
+        import torch
+        import torchaudio
 
-    def _tensor_to_pcm(self, wav_tensor: torch.Tensor) -> bytes:
-        """Convert a float32 tensor [-1, 1] to PCM 16-bit bytes."""
-        if wav_tensor.dim() > 1:
-            wav_tensor = wav_tensor.squeeze(0)
+        mp3_buffer = io.BytesIO(mp3_data)
+        waveform, sr = torchaudio.load(mp3_buffer, format="mp3")
 
-        wav_tensor = wav_tensor.cpu().clamp(-1.0, 1.0)
-        pcm = (wav_tensor * 32767).to(torch.int16)
+        # Convert to mono
+        if waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+
+        # Resample to target rate
+        if sr != self._config.sample_rate:
+            waveform = torchaudio.functional.resample(waveform, sr, self._config.sample_rate)
+
+        # Float32 [-1, 1] → PCM int16
+        waveform = waveform.squeeze(0).clamp(-1.0, 1.0)
+        pcm = (waveform * 32767).to(torch.int16)
         return pcm.numpy().tobytes()

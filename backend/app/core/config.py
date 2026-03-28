@@ -32,8 +32,10 @@ class Settings(BaseSettings):
     vad_threshold: float = 0.5
     vad_min_silence_ms: int = 700
     vad_min_speech_ms: int = 250
+    vad_input_sample_rate: int = 24_000  # matches frontend capture rate
 
-    # --- TTS (Chatterbox) ---
+    # --- TTS (Edge-TTS) ---
+    tts_voice: str = "fr-FR-HenriNeural"
     tts_sample_rate: int = 24_000
     tts_chunk_size: int = 4096
 

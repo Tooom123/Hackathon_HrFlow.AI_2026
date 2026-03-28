@@ -60,7 +60,7 @@ function ScoreBadge({ label, value, color }: { label: string; value: number | nu
 }
 
 function extractInterviewScore(profile: Profile): number | null {
-  const metas: { name: string; value: string }[] = (profile as any).metadatas ?? []
+  const metas = profile.metadatas ?? []
   // Prefer global score if already computed
   const global = metas.find(m => m.name === 'interview_global_score')
   if (global) {
