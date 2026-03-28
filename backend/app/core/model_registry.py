@@ -23,12 +23,16 @@ async def load_models() -> None:
     global _tts, _vad_config
 
     logger.info("[registry] Loading TTS model (Chatterbox)...")
-    _tts = TTSService(TTSConfig(
-        sample_rate=settings.tts_sample_rate,
-        chunk_size=settings.tts_chunk_size,
-    ))
-    await _tts.load_model()
-    logger.info("[registry] TTS model ready.")
+    try:
+        _tts = TTSService(TTSConfig(
+            sample_rate=settings.tts_sample_rate,
+            chunk_size=settings.tts_chunk_size,
+        ))
+        await _tts.load_model()
+        logger.info("[registry] TTS model ready.")
+    except Exception as exc:
+        logger.warning("[registry] TTS model failed to load (%s) — TTS endpoints will be unavailable.", exc)
+        _tts = None
 
     _vad_config = VADConfig(
         threshold=settings.vad_threshold,

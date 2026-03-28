@@ -25,6 +25,11 @@ export interface JobCard {
   updated_at?: string
 }
 
+export interface ProfileMetadata {
+  name: string
+  value: string
+}
+
 export interface Profile {
   key: string
   reference: string
@@ -39,6 +44,7 @@ export interface Profile {
   experiences?: { title?: string; company?: string; date_start?: string; date_end?: string }[]
   educations?: { title?: string; school?: string; date_start?: string; date_end?: string }[]
   skills?: { name: string; type?: string }[]
+  metadatas?: ProfileMetadata[]
   created_at?: string
 }
 

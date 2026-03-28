@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getProfilesForJob, scoreProfiles, type JobCard, type Profile } from '../api/hrflow'
 
-interface Props {
-  job: JobCard
-  onBack: () => void
-}
-
 function Logo() {
   return (
     <div className="flex items-center gap-3">
@@ -74,7 +69,7 @@ function extractInterviewScore(profile: Profile): number | null {
   return Math.round((avg / 10) * 100)
 }
 
-function ProfileCard({ profile, matchScore }: { profile: Profile; matchScore: number | null }) {
+function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; matchScore: number | null; onClick: () => void }) {
   const fullName = [profile.info?.first_name, profile.info?.last_name].filter(Boolean).join(' ') || 'Candidat inconnu'
   const latestExp = profile.experiences?.[0]
   const latestEdu = profile.educations?.[0]
@@ -88,7 +83,8 @@ function ProfileCard({ profile, matchScore }: { profile: Profile; matchScore: nu
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-zinc-800 p-5 transition-all hover:border-zinc-700"
+      onClick={onClick}
+      className="relative overflow-hidden rounded-2xl border border-zinc-800 p-5 transition-all hover:border-zinc-700 cursor-pointer active:scale-[0.99]"
       style={{
         background: 'linear-gradient(135deg, rgba(39,39,42,0.95) 0%, rgba(24,24,27,0.98) 100%)',
         boxShadow: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 4px 20px rgba(0,0,0,0.3)',
@@ -171,7 +167,13 @@ function ProfileCard({ profile, matchScore }: { profile: Profile; matchScore: nu
   )
 }
 
-export default function RhJobPage({ job, onBack }: Props) {
+interface Props {
+  job: JobCard
+  onBack: () => void
+  onOpenProfile: (profile: Profile, matchScore: number | null) => void
+}
+
+export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [total, setTotal] = useState(0)
   const [matchScores, setMatchScores] = useState<Record<string, number>>({})
@@ -260,6 +262,7 @@ export default function RhJobPage({ job, onBack }: Props) {
                   key={p.key ?? p.reference}
                   profile={p}
                   matchScore={p.key ? (matchScores[p.key] ?? null) : null}
+                  onClick={() => onOpenProfile(p, p.key ? (matchScores[p.key] ?? null) : null)}
                 />
               ))}
             </div>
