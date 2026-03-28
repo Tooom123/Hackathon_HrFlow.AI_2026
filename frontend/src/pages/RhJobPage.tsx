@@ -44,14 +44,16 @@ function SkillBadge({ name }: { name: string }) {
   )
 }
 
-function ScoreBadge({ label, value, color }: { label: string; value: number | null; color: 'brand' | 'amber' }) {
+function ScoreBadge({ label, value, color }: { label: string; value: number | null; color: 'brand' | 'amber' | 'zinc' }) {
   const display = value === null ? '–' : `${Math.round(value)}%`
   const colorClass = color === 'brand'
     ? 'bg-brand/10 text-brand border-brand/20'
-    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+    : color === 'amber'
+    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+    : 'bg-zinc-800/60 text-zinc-300 border-zinc-700'
   return (
-    <div className={`flex flex-col items-center rounded-xl border px-4 py-2.5 ${colorClass}`}>
-      <span className="text-xl font-bold tabular-nums leading-none">{display}</span>
+    <div className={`flex flex-col items-center rounded-xl border px-3 py-2 ${colorClass}`}>
+      <span className="text-lg font-bold tabular-nums leading-none">{display}</span>
       <span className="mt-1 text-[10px] font-medium opacity-70">{label}</span>
     </div>
   )
@@ -75,6 +77,11 @@ function extractInterviewScore(profile: Profile): number | null {
   return Math.round((avg / 10) * 100)
 }
 
+function computeAvg(a: number | null, b: number | null): number | null {
+  if (a !== null && b !== null) return Math.round((a + b) / 2)
+  return null
+}
+
 function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; matchScore: number | null; onClick: () => void }) {
   const fullName = [profile.info?.first_name, profile.info?.last_name].filter(Boolean).join(' ') || 'Candidat inconnu'
   const latestExp = profile.experiences?.[0]
@@ -82,6 +89,7 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
   const skills = profile.skills?.slice(0, 6) ?? []
   const hasMoreSkills = (profile.skills?.length ?? 0) > 6
   const interviewScore = extractInterviewScore(profile)
+  const avgScore = computeAvg(matchScore, interviewScore)
   const date = profile.created_at
   const formattedDate = date
     ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -164,9 +172,10 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
         </div>
 
         {/* Right: scores */}
-        <div className="flex shrink-0 flex-col gap-2 justify-center">
+        <div className="flex shrink-0 flex-row gap-2 items-center">
           <ScoreBadge label="Matching" value={matchScore} color="brand" />
           <ScoreBadge label="Entretien" value={interviewScore} color="amber" />
+          <ScoreBadge label="Moyenne" value={avgScore} color="zinc" />
         </div>
       </div>
     </div>
@@ -181,6 +190,14 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
   const [matchScores, setMatchScores] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [sortField, setSortField] = useState<'match' | 'interview' | 'moyenne' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  function handleSort(field: 'match' | 'interview' | 'moyenne') {
+    if (sortField === field) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    else { setSortField(field); setSortDir('desc') }
+  }
 
   const [linkState, setLinkState] = useState<LinkState>('idle')
   const [candidateLink, setCandidateLink] = useState<string | null>(null)
@@ -363,16 +380,65 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
           )}
 
           {!loading && profiles.length > 0 && (
-            <div className="space-y-3">
-              {profiles.map(p => (
-                <ProfileCard
-                  key={p.key ?? p.reference}
-                  profile={p}
-                  matchScore={p.key ? (matchScores[p.key] ?? null) : null}
-                  onClick={() => onOpenProfile(p, p.key ? (matchScores[p.key] ?? null) : null)}
-                />
-              ))}
-            </div>
+            <>
+              {/* Sort header — aligns with score badges on the right */}
+              <div className="flex items-center justify-end gap-2 pr-1">
+                {([
+                  { field: 'match' as const, label: 'Matching', activeColor: 'text-brand' },
+                  { field: 'interview' as const, label: 'Entretien', activeColor: 'text-amber-400' },
+                  { field: 'moyenne' as const, label: 'Moyenne', activeColor: 'text-zinc-300' },
+                ]).map(({ field, label, activeColor }) => {
+                  const active = sortField === field
+                  return (
+                    <button
+                      key={field}
+                      onClick={() => handleSort(field)}
+                      className={`flex w-[72px] items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition-all ${
+                        active
+                          ? `border-transparent bg-zinc-800 ${activeColor}`
+                          : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'
+                      }`}
+                    >
+                      {label}
+                      <svg viewBox="0 0 10 12" fill="none" className="h-2.5 w-2.5 shrink-0">
+                        {active && sortDir === 'asc' ? (
+                          <path d="M5 1v10M2 4l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                        ) : active && sortDir === 'desc' ? (
+                          <path d="M5 1v10M2 8l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                        ) : (
+                          <path d="M5 1v10M2 4l3-3 3 3M2 8l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                        )}
+                      </svg>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="space-y-3">
+                {[...profiles]
+                  .sort((a, b) => {
+                    if (!sortField) return 0
+                    const getScore = (p: Profile) => {
+                      const match = p.key ? (matchScores[p.key] ?? null) : null
+                      const interview = extractInterviewScore(p)
+                      if (sortField === 'match') return match
+                      if (sortField === 'interview') return interview
+                      return computeAvg(match, interview)
+                    }
+                    const sa = getScore(a) ?? -1
+                    const sb = getScore(b) ?? -1
+                    return sortDir === 'desc' ? sb - sa : sa - sb
+                  })
+                  .map(p => (
+                    <ProfileCard
+                      key={p.key ?? p.reference}
+                      profile={p}
+                      matchScore={p.key ? (matchScores[p.key] ?? null) : null}
+                      onClick={() => onOpenProfile(p, p.key ? (matchScores[p.key] ?? null) : null)}
+                    />
+                  ))}
+              </div>
+            </>
           )}
 
         </div>
