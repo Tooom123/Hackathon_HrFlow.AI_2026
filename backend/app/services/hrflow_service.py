@@ -171,7 +171,7 @@ class HrFlowService:
         questions = self._extract_questions(ask_result, question_count)
         logger.info("[setup] %d questions extraites", len(questions))
 
-        return {"job_key": job_key, "job_reference": job_reference, "questions": questions}
+        return {"job_key": job_key, "job_reference": job_reference, "job_title": title, "questions": questions}
 
     def _extract_questions(self, ask_result: dict, expected: int) -> list[str]:
         raw_data = ask_result.get("data") if isinstance(ask_result, dict) else None
@@ -203,6 +203,60 @@ class HrFlowService:
                 questions.append(cleaned)
 
         return questions[:expected]
+
+    async def save_questions_to_job(
+        self,
+        job_key: str,
+        questions: list[str],
+        job_title: str,
+        board_key: Optional[str] = None,
+    ) -> dict:
+        """Persiste les questions finales comme metadata du job (PUT /job/indexing).
+
+        Fetches the existing job first to get all required fields, then PUTs
+        back the full object with metadatas updated.
+        """
+        resolved_board_key = board_key or settings.hrflow_board_key
+        if not resolved_board_key:
+            raise ValueError("board_key requis")
+
+        # 1. GET existing job to retrieve all required fields
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            get_resp = await client.get(
+                f"{HRFLOW_API_BASE}/job/indexing",
+                headers=_auth_headers(),
+                params={"board_key": resolved_board_key, "key": job_key},
+            )
+            logger.info("[save_questions] GET job status=%s", get_resp.status_code)
+            if not get_resp.is_success:
+                raise ValueError(f"HrFlow GET job {get_resp.status_code}: {get_resp.text}")
+            job_data = (get_resp.json().get("data") or {})
+
+        # 2. Build metadata list
+        metadata = [{"name": f"question_{i + 1}", "value": q} for i, q in enumerate(questions)]
+
+        # 3. PUT full job object with updated metadata
+        payload = {
+            "board_key": resolved_board_key,
+            "key": job_key,
+            "reference": job_data.get("reference", ""),
+            "name": job_data.get("name") or job_title,
+            "location": job_data.get("location") or {"text": ""},
+            "sections": job_data.get("sections") or [],
+            "skills": job_data.get("skills") or [],
+            "metadatas": metadata,
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.put(
+                f"{HRFLOW_API_BASE}/job/indexing",
+                headers={**_auth_headers(), "content-type": "application/json"},
+                json=payload,
+            )
+            logger.info("[save_questions] PUT status=%s body=%s", response.status_code, response.text)
+            if not response.is_success:
+                raise ValueError(f"HrFlow {response.status_code}: {response.text}")
+            return response.json()
 
     # ------------------------------------------------------------------
     # Job questions (read from metadata)

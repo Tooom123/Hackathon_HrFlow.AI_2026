@@ -31,4 +31,12 @@ class SetupJobRequest(BaseModel):
 class SetupJobResponse(BaseModel):
     job_key: str
     job_reference: str
+    job_title: str
     questions: list[str]
+
+
+class SaveQuestionsRequest(BaseModel):
+    job_key: str = Field(..., min_length=1)
+    job_title: str = Field(..., min_length=1)
+    questions: list[str] = Field(..., description="Questions dans l'ordre final")
+    board_key: Optional[str] = None

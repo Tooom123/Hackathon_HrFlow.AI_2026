@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.dependencies.hrflow import get_hrflow_service
-from app.schemas.job import AskJobRequest, JobFromTextRequest, ParseTextRequest, SetupJobRequest, SetupJobResponse
+from app.schemas.job import AskJobRequest, JobFromTextRequest, ParseTextRequest, SaveQuestionsRequest, SetupJobRequest, SetupJobResponse
 from app.services.hrflow_service import HrFlowService
 
 router = APIRouter(prefix="/hrflow", tags=["hrflow"])
@@ -43,6 +43,25 @@ async def setup_job_interview(
             board_key=body.board_key,
         )
         return SetupJobResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.put("/jobs/questions")
+async def save_questions(
+    body: SaveQuestionsRequest,
+    service: HrFlowService = Depends(get_hrflow_service),
+) -> dict:
+    """Sauvegarde les questions finales comme metadata du job indexé."""
+    try:
+        return await service.save_questions_to_job(
+            job_key=body.job_key,
+            questions=body.questions,
+            job_title=body.job_title,
+            board_key=body.board_key,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
