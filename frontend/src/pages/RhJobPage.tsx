@@ -240,7 +240,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
     <div className="min-h-screen text-zinc-50">
       <header className="fixed inset-x-0 top-0 z-10 flex h-28 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-10 backdrop-blur-md">
         <Logo />
-        <span className="text-base font-semibold text-brand hidden sm:block">Espace recruteur</span>
+        <span className="text-xl font-bold text-brand hidden sm:block">Espace recruteur</span>
         <div className="flex items-center gap-3">
           {linkState !== 'ready' && (
             <button

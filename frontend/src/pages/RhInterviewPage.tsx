@@ -108,7 +108,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
       {/* Header */}
       <header className="fixed inset-x-0 top-0 z-10 flex h-28 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-10 backdrop-blur-md">
         <Logo />
-        <span className="text-base font-semibold text-brand hidden sm:block">Espace recruteur</span>
+        <span className="text-xl font-bold text-brand hidden sm:block">Espace recruteur</span>
         <button
           onClick={onBack}
           className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-sm font-semibold text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100 active:scale-[0.99]"
@@ -223,9 +223,13 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                         )}
                       </div>
                     </div>
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 mt-0.5 text-xs font-bold text-zinc-400">
-                      {initials}
-                    </div>
+                    {profile.info?.picture ? (
+                      <img src={profile.info.picture} alt={initials} className="h-8 w-8 shrink-0 rounded-full object-cover mt-0.5" />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 mt-0.5 text-xs font-bold text-zinc-400">
+                        {initials}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
