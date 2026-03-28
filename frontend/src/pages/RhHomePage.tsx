@@ -121,7 +121,7 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
     <div className="min-h-screen text-zinc-50">
       <header className="fixed inset-x-0 top-0 z-10 flex h-28 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-10 backdrop-blur-md">
         <Logo />
-        <span className="text-base font-semibold text-brand hidden sm:block">Espace recruteur</span>
+        <span className="text-xl font-bold text-brand hidden sm:block">Espace recruteur</span>
         <button
           onClick={onNewSession}
           className="flex items-center gap-2.5 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-zinc-950 transition-all hover:bg-brand-dim active:scale-[0.99]"
