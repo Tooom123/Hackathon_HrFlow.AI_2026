@@ -98,10 +98,12 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
   const fullName = [profile.info?.first_name, profile.info?.last_name].filter(Boolean).join(' ') || 'Candidat'
   const initials = ((profile.info?.first_name?.[0] ?? '') + (profile.info?.last_name?.[0] ?? '')).toUpperCase() || '?'
   const turns = extractInterviewTurns(profile)
-  const globalScore = extractGlobalScore(profile)
   const interviewPct = extractInterviewScore(profile)
   const completedAt = extractCompletedAt(profile)
   const hasInterview = turns.length > 0
+  const avgScore = (matchScore !== null && interviewPct !== null)
+    ? Math.round((matchScore + interviewPct) / 2)
+    : null
 
   return (
     <div className="min-h-screen text-zinc-50 flex flex-col">
@@ -157,14 +159,12 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                 </span>
                 <span className="mt-1 text-[10px] font-medium text-amber-400/70">Entretien</span>
               </div>
-              {globalScore !== null && (
-                <div className="flex flex-col items-center rounded-xl border border-zinc-700 bg-zinc-800/60 px-5 py-2.5">
-                  <span className="text-xl font-bold tabular-nums text-zinc-200 leading-none">
-                    {globalScore.toFixed(1)}<span className="text-sm text-zinc-500">/10</span>
-                  </span>
-                  <span className="mt-1 text-[10px] font-medium text-zinc-500">Score global</span>
-                </div>
-              )}
+              <div className="flex flex-col items-center rounded-xl border border-zinc-700 bg-zinc-800/60 px-5 py-2.5">
+                <span className="text-xl font-bold tabular-nums text-zinc-200 leading-none">
+                  {avgScore !== null ? `${avgScore}%` : '–'}
+                </span>
+                <span className="mt-1 text-[10px] font-medium text-zinc-500">Moyenne</span>
+              </div>
             </div>
           </div>
         </div>
