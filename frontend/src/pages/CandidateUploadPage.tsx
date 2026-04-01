@@ -30,6 +30,7 @@ export default function CandidateUploadPage() {
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
+  const [email, setEmail] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -82,7 +83,7 @@ export default function CandidateUploadPage() {
       const applyResult = await uploadCV(file, jobKey)
 
       setPhase('joining')
-      await joinInterviewSession(sessionId, applyResult.profile_reference)
+      await joinInterviewSession(sessionId, applyResult.profile_reference, email || undefined)
 
       navigate(`/session/${sessionId}/interview`)
     } catch (err) {
@@ -139,6 +140,21 @@ export default function CandidateUploadPage() {
             <p className="text-sm text-zinc-400 leading-relaxed">
               Déposez votre CV au format PDF puis lancez l'entretien. Vous répondrez à {totalQuestions} questions en conversation avec notre IA.
             </p>
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label htmlFor="candidate-email" className="block text-sm font-medium text-zinc-300">
+              Adresse e-mail <span className="text-zinc-600">(optionnel — pour être recontacté)</span>
+            </label>
+            <input
+              id="candidate-email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="prenom.nom@exemple.com"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-brand focus:ring-1 focus:ring-brand/30"
+            />
           </div>
 
           {/* Drop zone */}

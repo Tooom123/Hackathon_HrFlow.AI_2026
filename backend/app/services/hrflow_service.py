@@ -131,6 +131,28 @@ class HrFlowService:
             response.raise_for_status()
             return response.json()
 
+    async def get_job(
+        self,
+        job_key: str,
+        board_key: Optional[str] = None,
+    ) -> dict:
+        """Fetch a single job with all fields (skills, sections, metadatas…) via GET /job/indexing."""
+        resolved_board_key = board_key or settings.hrflow_board_key
+        if not resolved_board_key:
+            raise ValueError("board_key requis")
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{HRFLOW_API_BASE}/job/indexing",
+                headers=_auth_headers(),
+                params={"board_key": resolved_board_key, "key": job_key},
+            )
+            if not resp.is_success:
+                raise ValueError(f"HrFlow {resp.status_code}: {resp.text}")
+            data = resp.json().get("data")
+            if not data:
+                raise ValueError(f"Job {job_key} not found")
+            return data
+
     async def list_jobs(
         self,
         board_key: Optional[str] = None,
@@ -405,22 +427,110 @@ class HrFlowService:
     # Scoring
     # ------------------------------------------------------------------
 
+    # Comprehensive stop-word set (French + English)
+    _STOP_WORDS: frozenset[str] = frozenset({
+        # French
+        "les", "des", "une", "dans", "pour", "avec", "est", "sur", "par",
+        "vous", "nous", "notre", "votre", "qui", "que", "dont", "quoi",
+        "etre", "avoir", "faire", "plus", "comme", "tout", "bien", "tres",
+        "aux", "ces", "ses", "mes", "son", "bon", "etc", "même", "entre",
+        "avant", "apres", "mais", "donc", "car", "aussi", "selon", "afin",
+        "notamment", "leur", "leurs", "ils", "elles", "lui", "être", "avoir",
+        "cette", "cela", "ceci", "chez", "sans", "sous", "lors", "deja",
+        "encore", "toute", "tous", "vos", "travail", "poste", "mission",
+        "equipe", "profil", "recherche", "candidat", "entreprise", "ans",
+        # English
+        "the", "and", "for", "with", "that", "this", "are", "was", "you",
+        "our", "your", "who", "what", "from", "will", "have", "has", "had",
+        "not", "all", "any", "can", "she", "him", "her", "his", "they",
+        "them", "also", "both", "each", "more", "such", "than", "then",
+        "into", "about", "other", "would", "could", "should", "been",
+        "team", "role", "work", "job", "position", "candidate", "company",
+        "experience", "years", "skills", "ability", "strong",
+    })
+
+    @staticmethod
+    def _strip_accents(text: str) -> str:
+        """Remove diacritics: développeur → developpeur."""
+        import unicodedata
+        return "".join(
+            c for c in unicodedata.normalize("NFD", text)
+            if unicodedata.category(c) != "Mn"
+        )
+
+    @classmethod
+    def _keywords(cls, text: str) -> set[str]:
+        """Extract meaningful keywords: strip accents, lowercase, remove stop words."""
+        normalized = cls._strip_accents(text).lower()
+        words = set(re.findall(r"[a-z0-9][a-z0-9+#.\-]*[a-z0-9]|[a-z0-9]{3,}", normalized))
+        return words - cls._STOP_WORDS
+
+    @staticmethod
+    def _normalize_skill(name: str) -> str:
+        """Lowercase + strip common separators for fuzzy comparison."""
+        return re.sub(r"[\s\-_./]+", " ", name.lower()).strip()
+
+    @classmethod
+    def _skills_overlap(cls, profile_skills: list[str], job_skills: set[str]) -> float:
+        """Flexible skill overlap: exact OR substring match (both directions)."""
+        if not profile_skills or not job_skills:
+            return 0.0
+        matched: set[str] = set()
+        for ps in profile_skills:
+            for js in job_skills:
+                if ps == js or ps in js or js in ps:
+                    matched.add(js)
+        return round(min(len(matched) / len(job_skills) * 1.5, 1.0) * 100, 1)
+
+    @staticmethod
+    def _build_job_text(job_data: dict) -> str:
+        """Concatenate all meaningful text fields from a job object."""
+        parts: list[str] = [
+            job_data.get("name") or "",
+            job_data.get("summary") or "",
+        ]
+        for section in (job_data.get("sections") or []):
+            parts.append(section.get("title") or "")
+            parts.append(section.get("description") or "")
+        for skill in (job_data.get("skills") or []):
+            parts.append(skill.get("name") or "")
+        return " ".join(p for p in parts if p)
+
+    @staticmethod
+    def _build_profile_text(profile: dict) -> str:
+        """Concatenate all meaningful text fields from a profile object."""
+        parts: list[str] = [profile.get("text") or ""]
+        info = profile.get("info") or {}
+        parts.append(info.get("summary") or "")
+        for exp in (profile.get("experiences") or []):
+            parts.append(exp.get("title") or "")
+            parts.append(exp.get("company") or "")
+            parts.append(exp.get("description") or "")
+        for edu in (profile.get("educations") or []):
+            parts.append(edu.get("title") or "")
+            parts.append(edu.get("school") or "")
+        for skill in (profile.get("skills") or []):
+            parts.append(skill.get("name") or "")
+        return " ".join(p for p in parts if p)
+
     async def score_profiles_for_job(
         self,
         job_key: str,
         profiles: list[dict],
         board_key: Optional[str] = None,
     ) -> dict[str, float]:
-        """Compute a skill-overlap matching score (0–100) for each profile vs the job.
+        """Compute a matching score (0–100) for each profile vs the job.
 
-        Strategy: fetch job skills from HrFlow, then for each profile compute
-        Jaccard similarity between profile skills and job skills (case-insensitive).
+        Priority chain:
+        1. Both have explicit skills → flexible substring skill overlap.
+        2. Profile has skills, job has text only → check skills against job text.
+        3. Job has skills, profile has text only → check skills against CV text.
+        4. Neither has skills → keyword overlap on full texts (accent-normalized).
         """
         resolved_board_key = board_key or settings.hrflow_board_key
         if not resolved_board_key or not profiles:
             return {}
 
-        # Fetch job skills
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
@@ -434,48 +544,59 @@ class HrFlowService:
             logger.warning("[scoring] Could not fetch job: %s", exc)
             return {}
 
-        job_skills = {
-            s["name"].lower()
+        job_skills_norm = {
+            self._normalize_skill(s["name"])
             for s in (job_data.get("skills") or [])
             if isinstance(s, dict) and s.get("name")
         }
-        logger.info("[scoring] job_skills(%d)=%s", len(job_skills), list(job_skills)[:10])
-
-        # Fallback: build keyword set from job description text when no skills indexed
-        job_text_lower = ""
-        if not job_skills:
-            sections = job_data.get("sections") or []
-            job_text_lower = " ".join(
-                (s.get("description") or "") for s in sections if isinstance(s, dict)
-            ).lower()
-            logger.info("[scoring] fallback to text matching, text_len=%d", len(job_text_lower))
+        job_keywords = self._keywords(self._build_job_text(job_data))
+        logger.info("[scoring] job_skills=%d job_keywords=%d", len(job_skills_norm), len(job_keywords))
 
         result: dict[str, float] = {}
         for profile in profiles:
             key = profile.get("key")
             if not key:
                 continue
-            profile_skills = [
-                s["name"].lower()
+
+            profile_skills_norm = [
+                self._normalize_skill(s["name"])
                 for s in (profile.get("skills") or [])
                 if isinstance(s, dict) and s.get("name")
             ]
-            if not profile_skills:
-                result[key] = 0.0
-                continue
+            profile_full_text = self._build_profile_text(profile)
+            profile_keywords = self._keywords(profile_full_text)
 
-            if job_skills:
-                profile_set = set(profile_skills)
-                intersection = len(job_skills & profile_set)
-                union = len(job_skills | profile_set)
+            if profile_skills_norm and job_skills_norm:
+                score = self._skills_overlap(profile_skills_norm, job_skills_norm)
+
+            elif profile_skills_norm and job_keywords:
+                # Profile has explicit skills; match them against job keyword cloud
+                norm_skills = {self._strip_accents(s).lower() for s in profile_skills_norm}
+                hits = sum(1 for s in norm_skills if any(s in jk or jk in s for jk in job_keywords))
+                score = round(min(hits / len(norm_skills), 1.0) * 100, 1)
+
+            elif profile_keywords and job_skills_norm:
+                # Job has explicit skills; look for them in the full CV text
+                hits = sum(1 for js in job_skills_norm if any(
+                    js in pk or pk in js for pk in profile_keywords
+                ))
+                score = round(min(hits / len(job_skills_norm) * 1.5, 1.0) * 100, 1)
+
+            elif profile_keywords and job_keywords:
+                # Pure text-based: Jaccard on keyword sets (accent-normalized, stop-word stripped)
+                intersection = len(profile_keywords & job_keywords)
+                union = len(profile_keywords | job_keywords)
                 jaccard = intersection / union if union else 0.0
-                score = round(min(jaccard * 2.5, 1.0) * 100, 1)
-            else:
-                # Text fallback: count how many profile skills appear in job description
-                hits = sum(1 for skill in profile_skills if skill in job_text_lower)
-                score = round(min(hits / max(len(profile_skills), 1), 1.0) * 100, 1)
+                # Jaccard is naturally low for large docs → apply boost so a 10% overlap → ~50%
+                score = round(min(jaccard * 5.0, 1.0) * 100, 1)
 
-            logger.info("[scoring] profile=%s skills=%d score=%.1f", key[:8], len(profile_skills), score)
+            else:
+                score = 0.0
+
+            logger.info(
+                "[scoring] profile=%s skills=%d kw=%d score=%.1f",
+                key[:8], len(profile_skills_norm), len(profile_keywords), score,
+            )
             result[key] = score
 
         return result
@@ -484,12 +605,22 @@ class HrFlowService:
     # Interview results → profile metadata
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _ensure_job_key_tag(tags: list[dict], job_key: Optional[str]) -> list[dict]:
+        """Guarantee the job_key tag is present — re-add it if it was stripped by HrFlow."""
+        if not job_key:
+            return tags
+        existing = [t for t in tags if not (t.get("name") == "job_key" and t.get("value") == job_key)]
+        return existing + [{"name": "job_key", "value": job_key}]
+
     async def save_interview_to_profile(
         self,
         profile_reference: str,
         answers: list[dict],
         global_score: float,
+        job_key: Optional[str] = None,
         source_key: Optional[str] = None,
+        candidate_email: Optional[str] = None,
     ) -> dict:
         """Persist interview answers + scores as metadata on the HrFlow profile.
 
@@ -531,11 +662,15 @@ class HrFlowService:
         logger.info("[save_interview] profile_key=%r info_keys=%s", profile_key, list(info.keys()))
 
         # 2. Keep non-interview metadatas and refresh only the interview keys.
+        # Each answer is stored as a single JSON entry to stay within HrFlow's metadata count limit.
         existing_metadatas = profile_data.get("metadatas") or []
         metadatas: list[dict] = [
             metadata
             for metadata in existing_metadatas
-            if not re.match(r"^interview_(question|answer|score|evaluation)_\d+$", metadata.get("name", ""))
+            if not re.match(
+                r"^interview_(entry|question|answer|score|evaluation)_\d+$",
+                metadata.get("name", ""),
+            )
             and metadata.get("name") not in {"interview_global_score", "interview_completed_at"}
         ]
         for i, answer in enumerate(answers):
@@ -544,12 +679,13 @@ class HrFlowService:
                 answer.get("transcript", ""),
                 question_text,
             )
-            metadatas += [
-                {"name": f"interview_question_{i}", "value": question_text},
-                {"name": f"interview_answer_{i}", "value": transcript},
-                {"name": f"interview_score_{i}", "value": str(answer.get("score", 0))},
-                {"name": f"interview_evaluation_{i}", "value": answer.get("evaluation", "")},
-            ]
+            entry = {
+                "q": question_text,
+                "a": transcript,
+                "s": answer.get("score", 0),
+                "e": answer.get("evaluation", ""),
+            }
+            metadatas.append({"name": f"interview_entry_{i}", "value": json.dumps(entry, ensure_ascii=False)})
 
         metadatas += [
             {"name": "interview_global_score", "value": str(round(global_score, 1))},
@@ -566,7 +702,7 @@ class HrFlowService:
                     "full_name": info.get("full_name", ""),
                     "first_name": info.get("first_name", ""),
                     "last_name": info.get("last_name", ""),
-                    "email": info.get("email", ""),
+                    "email": candidate_email or info.get("email", ""),
                     "phone": info.get("phone", ""),
                     "summary": info.get("summary", ""),
                     "location": info.get("location") or {"text": ""},
@@ -582,7 +718,7 @@ class HrFlowService:
                 "courses": profile_data.get("courses") or [],
                 "tasks": profile_data.get("tasks") or [],
                 "interests": profile_data.get("interests") or [],
-                "tags": profile_data.get("tags") or [],
+                "tags": self._ensure_job_key_tag(profile_data.get("tags") or [], job_key),
                 "labels": profile_data.get("labels") or [],
                 "metadatas": metadatas,
             },

@@ -44,12 +44,15 @@ export interface Profile {
     last_name?: string
     email?: string
     phone?: string
+    summary?: string
     location?: { text?: string }
     picture?: string
   }
-  experiences?: { title?: string; company?: string; date_start?: string; date_end?: string }[]
-  educations?: { title?: string; school?: string; date_start?: string; date_end?: string }[]
+  experiences?: { title?: string; company?: string; description?: string; date_start?: string; date_end?: string }[]
+  educations?: { title?: string; school?: string; description?: string; date_start?: string; date_end?: string }[]
   skills?: { name: string; type?: string }[]
+  languages?: { name: string; value?: string }[]
+  attachments?: { type?: string; file_name?: string; file_url?: string; public_url?: string }[]
   metadatas?: ProfileMetadata[]
   created_at?: string
 }
@@ -77,6 +80,12 @@ export async function getProfilesForJob(job_key: string, page = 1, limit = 30): 
     profiles: (data?.data?.profiles ?? []) as Profile[],
     total: data?.meta?.total ?? 0,
   }
+}
+
+export async function getJobDetail(job_key: string): Promise<JobCard> {
+  const res = await fetch(`${API_BASE}/hrflow/jobs/${encodeURIComponent(job_key)}`)
+  if (!res.ok) throw new Error(`Job ${job_key} introuvable`)
+  return res.json()
 }
 
 export async function listJobs(page = 1, limit = 30): Promise<JobCard[]> {
@@ -171,9 +180,11 @@ export interface JoinSessionResponse {
   ws_url: string
 }
 
-export async function joinInterviewSession(session_id: string, profile_reference: string): Promise<JoinSessionResponse> {
+export async function joinInterviewSession(session_id: string, profile_reference: string, candidate_email?: string): Promise<JoinSessionResponse> {
+  const params = new URLSearchParams({ profile_reference })
+  if (candidate_email) params.set('candidate_email', candidate_email)
   const res = await fetch(
-    `${API_BASE}/interview/sessions/${encodeURIComponent(session_id)}/join?profile_reference=${encodeURIComponent(profile_reference)}`,
+    `${API_BASE}/interview/sessions/${encodeURIComponent(session_id)}/join?${params}`,
     { method: 'POST' },
   )
   if (!res.ok) {

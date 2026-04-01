@@ -47,6 +47,7 @@ class InterviewSession:
     questions: list[Question]
     state: SessionState = SessionState.WAITING
     candidate_profile_reference: Optional[str] = None
+    candidate_email: Optional[str] = None
     current_question_index: int = 0
     answers: list[Answer] = field(default_factory=list)
 

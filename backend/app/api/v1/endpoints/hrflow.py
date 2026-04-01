@@ -34,6 +34,21 @@ async def list_jobs(
         raise HTTPException(status_code=502, detail=str(exc))
 
 
+@router.get("/jobs/{job_key}")
+async def get_job(
+    job_key: str,
+    board_key: Optional[str] = Query(default=None),
+    service: HrFlowService = Depends(get_hrflow_service),
+) -> dict:
+    """Retourne un job complet (skills, sections, metadatas…) depuis HrFlow."""
+    try:
+        return await service.get_job(job_key=job_key, board_key=board_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
 @router.post("/jobs/{job_key}/scoring")
 async def score_profiles(
     job_key: str,

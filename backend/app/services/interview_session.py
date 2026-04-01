@@ -15,7 +15,8 @@ from app.schemas.interview import (
     SessionState,
 )
 from app.services.llm_service import LLMDecision, LLMService
-from app.services.stt_service import STTService
+# from app.services.stt_service import STTService        # Apple Silicon (mlx-whisper)
+from app.services.stt_service_faster import STTService   # Linux/Windows (faster-whisper)
 from app.services.tts_service import TTSService
 from app.services.vad_service import VADService
 
@@ -237,6 +238,8 @@ class SessionOrchestrator:
                     profile_reference=profile_reference,
                     answers=answers_payload,
                     global_score=global_score,
+                    job_key=self.session.job_key,
+                    candidate_email=self.session.candidate_email or None,
                 )
                 logger.info("[persist] Successfully saved interview results to HrFlow profile %s", profile_reference)
                 return

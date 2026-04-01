@@ -112,6 +112,7 @@ async def create_session(
 async def join_session(
     session_id: str,
     profile_reference: str,
+    candidate_email: str | None = None,
 ) -> dict:
     """Candidate joins a session after uploading their CV.
 
@@ -127,6 +128,8 @@ async def join_session(
         raise HTTPException(status_code=409, detail="Session already joined or started")
 
     session.candidate_profile_reference = profile_reference
+    if candidate_email:
+        session.candidate_email = candidate_email
     session.state = SessionState.READY
 
     # Initialize AI services & orchestrator
@@ -297,31 +300,27 @@ async def interview_websocket(websocket: WebSocket, session_id: str) -> None:
 async def _init_orchestrator(session: InterviewSession) -> SessionOrchestrator:
     """Build AI services and create the session orchestrator.
 
-    TTS is a shared singleton loaded at startup (heavy model).
-    VAD is per-session (stateful). STT and LLM are lightweight.
+    TTS and STT are shared singletons loaded at startup (heavy models).
+    VAD is per-session (stateful). LLM is lightweight (HTTP calls to Ollama).
     """
-    from app.core.model_registry import get_tts, get_vad_config
+    from app.core.model_registry import get_stt, get_tts, get_vad_config
     from app.services.interview_session import SessionOrchestrator
     from app.services.llm_service import LLMConfig, LLMService
-    from app.services.stt_service import STTConfig, STTService
     from app.services.vad_service import VADService
 
     # Per-session VAD (stateful — each session needs its own instance)
     vad = VADService(get_vad_config())
     await vad.load_model()
 
-    stt = STTService(STTConfig(
-        model_name=settings.whisper_model,
-        language=settings.whisper_language,
-    ))
+    # Shared singletons — already loaded at startup
+    stt = get_stt()
+    tts = get_tts()
+
     llm = LLMService(LLMConfig(
         base_url=settings.ollama_base_url,
         model=settings.ollama_model,
         temperature=settings.ollama_temperature,
     ))
-
-    # Shared singleton — already loaded at startup
-    tts = get_tts()
 
     return SessionOrchestrator(
         session=session,
