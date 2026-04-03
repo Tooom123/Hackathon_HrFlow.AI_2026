@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useState, useEffect } from 'react'
 import { getJobDetail } from '../api/hrflow'
 import type { JobCard, Profile } from '../api/hrflow'
@@ -22,12 +23,7 @@ type Tab = 'interview' | 'profile'
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-6 w-6">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-11 w-11 object-contain" />
       <span className="text-xl font-bold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -171,7 +167,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
       {/* Header */}
       <header className="fixed inset-x-0 top-0 z-10 flex h-20 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/90 px-8 backdrop-blur-md">
         <Logo />
-        <span className="text-xl font-bold text-brand hidden sm:block">Espace recruteur</span>
+        <span className="text-xl font-bold text-brand hidden sm:block">Recruiter space</span>
         <button
           onClick={onBack}
           className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100"
@@ -179,7 +175,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
           <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
             <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Retour
+          Back
         </button>
       </header>
 
@@ -199,7 +195,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                 <p className="text-sm font-semibold text-zinc-100">{fullName}</p>
                 <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                   {profile.info?.email && <span className="text-xs text-zinc-500">{profile.info.email}</span>}
-                  {completedAt && <span className="text-xs text-zinc-600">Entretien le {completedAt}</span>}
+                  {completedAt && <span className="text-xs text-zinc-600">Interviewed on {completedAt}</span>}
                   <span className="text-xs text-zinc-700">{job.name}</span>
                 </div>
               </div>
@@ -230,7 +226,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
         {/* Tabs */}
         <div className="border-b border-zinc-800/60 px-8">
           <div className="mx-auto max-w-6xl flex gap-1 pt-3">
-            {([['interview', 'Entretien'], ['profile', 'Profil CV']] as [Tab, string][]).map(([id, label]) => (
+            {([['interview', 'Interview'], ['profile', 'CV Profile']] as [Tab, string][]).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
@@ -252,7 +248,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
             <div className="mx-auto max-w-3xl space-y-6">
               {!hasInterview && (
                 <div className="rounded-2xl border border-dashed border-zinc-800 px-4 py-12 text-center">
-                  <p className="text-sm text-zinc-600">Aucun entretien enregistré pour ce candidat.</p>
+                  <p className="text-sm text-zinc-600">No interview recorded for this candidate.</p>
                 </div>
               )}
 
@@ -322,7 +318,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
               {/* Left: PDF viewer */}
               <div className="border-r border-zinc-800/60 flex flex-col">
                 <div className="px-5 py-3 border-b border-zinc-800/40">
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">CV importé</p>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Uploaded CV</p>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   {cvUrl ? (
@@ -330,7 +326,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                       src={`${cvUrl}#toolbar=0&navpanes=0`}
                       className="h-full w-full"
                       style={{ minHeight: 'calc(100vh - 220px)' }}
-                      title="CV du candidat"
+                      title="Candidate CV"
                     />
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center"
@@ -343,9 +339,9 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-zinc-400">CV non disponible</p>
+                        <p className="text-sm font-medium text-zinc-400">CV not available</p>
                         <p className="mt-1 text-xs text-zinc-600 max-w-xs">
-                          HrFlow n'a pas retourné d'URL de fichier pour ce profil.
+                          HrFlow did not return a file URL for this profile.
                         </p>
                       </div>
                     </div>
@@ -356,17 +352,17 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
               {/* Right: strong / weak points */}
               <div className="overflow-y-auto px-6 py-6 space-y-5" style={{ maxHeight: 'calc(100vh - 180px)' }}>
                 <div>
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Analyse du profil</p>
-                  <p className="text-xs text-zinc-600">Justifie la note de matching ({matchScore !== null ? `${Math.round(matchScore)}%` : '–'})</p>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Profile analysis</p>
+                  <p className="text-xs text-zinc-600">Explains the matching score ({matchScore !== null ? `${Math.round(matchScore)}%` : '–'})</p>
                 </div>
 
-                {/* Points forts */}
+                {/* Strengths */}
                 <div className="rounded-2xl border border-brand/25 bg-brand/5 p-5 space-y-4">
                   <div className="flex items-center gap-2">
                     <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4 text-brand shrink-0">
                       <path d="M8 2v9M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" transform="rotate(180 8 8)" />
                     </svg>
-                    <p className="text-sm font-semibold text-brand">Points forts</p>
+                    <p className="text-sm font-semibold text-brand">Strengths</p>
                   </div>
 
                   {matchedSkills.length > 0 ? (
@@ -383,12 +379,12 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-zinc-600 italic">Aucune compétence requise identifiée dans le profil.</p>
+                    <p className="text-xs text-zinc-600 italic">No required skills identified in the profile.</p>
                   )}
 
                   {relevantExp.length > 0 && (
                     <div className="space-y-2 border-t border-brand/10 pt-3">
-                      <p className="text-xs text-zinc-500">Expériences pertinentes pour le poste</p>
+                      <p className="text-xs text-zinc-500">Relevant experience for this position</p>
                       <div className="space-y-1.5">
                         {relevantExp.map((exp, i) => (
                           <div key={i} className="flex items-baseline gap-2">
@@ -403,17 +399,17 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                   )}
 
                   {matchedSkills.length === 0 && relevantExp.length === 0 && (
-                    <p className="text-xs text-zinc-600 italic">Aucun point fort identifié automatiquement.</p>
+                    <p className="text-xs text-zinc-600 italic">No strengths identified automatically.</p>
                   )}
                 </div>
 
-                {/* Points faibles */}
+                {/* Weaknesses */}
                 <div className="rounded-2xl border border-red-900/30 bg-red-950/15 p-5 space-y-4">
                   <div className="flex items-center gap-2">
                     <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4 text-red-400 shrink-0">
                       <path d="M8 2v9M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <p className="text-sm font-semibold text-red-400">Points faibles</p>
+                    <p className="text-sm font-semibold text-red-400">Weaknesses</p>
                   </div>
 
                   {missingSkills.length > 0 ? (
@@ -433,12 +429,12 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-zinc-600 italic">Toutes les compétences requises sont présentes.</p>
+                    <p className="text-xs text-zinc-600 italic">All required skills are present.</p>
                   )}
 
                   {otherExp.length > 0 && missingSkills.length > 0 && (
                     <div className="space-y-2 border-t border-red-900/20 pt-3">
-                      <p className="text-xs text-zinc-500">Expériences non directement liées au poste</p>
+                      <p className="text-xs text-zinc-500">Experience not directly related to the position</p>
                       <div className="space-y-1.5">
                         {otherExp.slice(0, 3).map((exp, i) => (
                           <div key={i} className="flex items-baseline gap-2">
@@ -453,7 +449,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                   )}
 
                   {missingSkills.length === 0 && otherExp.length === 0 && (
-                    <p className="text-xs text-zinc-600 italic">Aucun point faible identifié automatiquement.</p>
+                    <p className="text-xs text-zinc-600 italic">No weaknesses identified automatically.</p>
                   )}
                 </div>
 
@@ -461,7 +457,7 @@ export default function RhInterviewPage({ job, profile, matchScore, onBack }: Pr
                 {jobSkillsNorm.size === 0 && (
                   <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
                     <p className="text-xs text-zinc-500">
-                      Aucune compétence explicitement indexée sur cette offre. Le score de matching est calculé par analyse textuelle du CV et de la description du poste.
+                      No skills explicitly indexed on this job. The matching score is calculated by textual analysis of the CV and job description.
                     </p>
                   </div>
                 )}

@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useState } from 'react'
 import { setupJobInterview, type SetupJobResponse } from '../api/hrflow'
 import StepIndicator from '../components/StepIndicator'
@@ -10,12 +11,7 @@ interface Props {
 function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-7 w-7 object-contain" />
       <span className="text-sm font-semibold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -39,7 +35,7 @@ export default function RhSetupPage({ onBack, onComplete }: Props) {
       const result = await setupJobInterview({ text, title, question_count: questionCount })
       onComplete(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -59,7 +55,7 @@ export default function RhSetupPage({ onBack, onComplete }: Props) {
           <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
             <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Retour
+          Back
         </button>
       </header>
 
@@ -68,33 +64,33 @@ export default function RhSetupPage({ onBack, onComplete }: Props) {
 
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-zinc-50">
-              Créer une session d'entretien
+              Create an interview session
             </h1>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Collez votre fiche de poste, ajustez le nombre de questions — l'IA génère un questionnaire sur mesure.
+              Paste your job description and adjust the number of questions — the AI generates a tailored questionnaire.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-zinc-400">Intitulé du poste</label>
+              <label className="block text-xs font-medium text-zinc-400">Job title</label>
               <input
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="ex : Développeur Python Senior"
+                placeholder="e.g. Senior Python Developer"
                 required
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-50 placeholder-zinc-600 transition-all focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-zinc-400">Fiche de poste</label>
+              <label className="block text-xs font-medium text-zinc-400">Job description</label>
               <textarea
                 value={text}
                 onChange={e => setText(e.target.value)}
-                placeholder="Collez le texte complet de l'offre d'emploi…"
+                placeholder="Paste the full job posting text…"
                 required
                 rows={11}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-zinc-100 placeholder-zinc-600 transition-all focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 resize-none"
@@ -104,8 +100,8 @@ export default function RhSetupPage({ onBack, onComplete }: Props) {
             <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-zinc-200">Questions techniques</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Nombre de questions à générer</p>
+                  <p className="text-sm font-medium text-zinc-200">Interview questions</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Number of questions to generate</p>
                 </div>
                 <span className="text-4xl font-bold tabular-nums text-brand">{questionCount}</span>
               </div>
@@ -155,11 +151,11 @@ export default function RhSetupPage({ onBack, onComplete }: Props) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Analyse et génération en cours…
+                  Analyzing and generating…
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  Générer les questions
+                  Generate questions
                   <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none">
                     <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

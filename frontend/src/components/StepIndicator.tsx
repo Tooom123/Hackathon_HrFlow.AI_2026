@@ -1,4 +1,4 @@
-const STEPS = ['Offre', 'Questions', 'Partage'] as const
+const STEPS = ['Job', 'Questions', 'Share'] as const
 
 interface Props {
   current: 1 | 2 | 3

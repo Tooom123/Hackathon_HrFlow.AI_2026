@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { buildWsUrl } from '../api/hrflow'
@@ -15,12 +16,7 @@ interface ChatMessage {
 function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-7 w-7 object-contain" />
       <span className="text-sm font-semibold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -30,13 +26,13 @@ function Logo() {
 
 function StateBadge({ state }: { state: SessionState }) {
   const config: Record<SessionState, { label: string; color: string }> = {
-    connecting: { label: 'Connexion…', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    ready: { label: 'Prêt', color: 'bg-brand/10 text-brand border-brand/20' },
-    asking: { label: 'Question en cours', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    listening: { label: 'À vous de parler', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-    processing: { label: 'Analyse…', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    done: { label: 'Terminé', color: 'bg-brand/10 text-brand border-brand/20' },
-    error: { label: 'Erreur', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
+    connecting: { label: 'Connecting…', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    ready: { label: 'Ready', color: 'bg-brand/10 text-brand border-brand/20' },
+    asking: { label: 'Question in progress', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    listening: { label: 'Your turn to speak', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+    processing: { label: 'Processing…', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    done: { label: 'Done', color: 'bg-brand/10 text-brand border-brand/20' },
+    error: { label: 'Error', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
   }
   const { label, color } = config[state]
   return (
@@ -63,16 +59,16 @@ function ConnectingScreen() {
 
       <div className="space-y-3 text-center">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
-          Préparation de l'entretien
+          Preparing the interview
         </h1>
         <p className="text-sm text-zinc-500 max-w-xs mx-auto leading-relaxed">
-          Connexion au serveur, vérification du micro et chargement des questions…
+          Connecting to server, checking microphone and loading questions…
         </p>
       </div>
 
       {/* Steps */}
       <div className="space-y-3 w-full max-w-xs">
-        {['Connexion au serveur', 'Initialisation audio', 'Chargement des questions'].map((step, i) => (
+        {['Connecting to server', 'Initializing audio', 'Loading questions'].map((step, i) => (
           <div key={step} className="flex items-center gap-3 rounded-xl border border-zinc-800/60 bg-zinc-900/50 px-4 py-3"
             style={{ animationDelay: `${i * 0.3}s` }}>
             <svg className="h-4 w-4 shrink-0 animate-spin text-brand" viewBox="0 0 24 24" fill="none"
@@ -92,7 +88,7 @@ function ConnectingScreen() {
           <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
         </svg>
         <p className="text-xs text-zinc-600">
-          Autorisez l'accès au microphone lorsque le navigateur le demande
+          Allow microphone access when the browser asks
         </p>
       </div>
     </div>
@@ -123,7 +119,7 @@ function AiBubble({ text, isPlaying }: { text: string; isPlaying: boolean }) {
                 />
               ))}
             </div>
-            <span className="text-[11px] text-zinc-500">Lecture audio…</span>
+            <span className="text-[11px] text-zinc-500">Playing audio…</span>
           </div>
         )}
       </div>
@@ -158,7 +154,7 @@ function ListeningIndicator() {
             />
           ))}
         </div>
-        <span className="text-xs text-green-400">Enregistrement…</span>
+        <span className="text-xs text-green-400">Recording…</span>
       </div>
     </div>
   )
@@ -367,13 +363,13 @@ export default function CandidateInterviewPage() {
       stopMicrophone()
       setState(prev => (prev === 'done' || prev === 'error') ? prev : 'error')
       if (stateRef.current !== 'done' && stateRef.current !== 'error') {
-        setError('Connexion perdue')
+        setError('Connection lost')
       }
     }
 
     ws.onerror = () => {
       setState('error')
-      setError('Erreur de connexion WebSocket')
+      setError('WebSocket connection error')
     }
 
     return () => {
@@ -442,7 +438,7 @@ export default function CandidateInterviewPage() {
                 </svg>
               </div>
               <div className="rounded-2xl rounded-tl-md border border-zinc-800 bg-zinc-900 px-4 py-3">
-                <p className="text-sm text-zinc-500">Analyse de votre réponse…</p>
+                <p className="text-sm text-zinc-500">Analyzing your answer…</p>
               </div>
             </div>
           )}
@@ -455,9 +451,9 @@ export default function CandidateInterviewPage() {
                   <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-zinc-100">Entretien terminé</h2>
+              <h2 className="text-xl font-bold text-zinc-100">Interview complete</h2>
               <p className="text-sm text-zinc-400">
-                Merci pour votre participation. Le recruteur recevra vos résultats.
+                Thank you for participating. The recruiter will receive your results.
               </p>
             </div>
           )}
@@ -484,7 +480,7 @@ export default function CandidateInterviewPage() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                   <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
                 </span>
-                <span className="text-sm font-medium text-green-400">Micro actif — parlez maintenant</span>
+                <span className="text-sm font-medium text-green-400">Microphone active — speak now</span>
               </>
             ) : state === 'asking' || isAudioPlaying ? (
               <>
@@ -497,9 +493,9 @@ export default function CandidateInterviewPage() {
                     />
                   ))}
                 </div>
-                <span className="text-sm text-zinc-400">L'IA pose une question…</span>
+                <span className="text-sm text-zinc-400">The AI is asking a question…</span>
                 <span className="rounded-full bg-red-500/10 border border-red-500/20 px-2.5 py-0.5 text-[11px] font-medium text-red-400">
-                  Micro coupé
+                  Mic muted
                 </span>
               </>
             ) : (
@@ -508,7 +504,7 @@ export default function CandidateInterviewPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
-                <span className="text-sm text-zinc-500">Traitement en cours…</span>
+                <span className="text-sm text-zinc-500">Processing…</span>
               </>
             )}
           </div>

@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useEffect, useState } from 'react'
 import { getProfilesForJob, scoreProfiles, getSessionForJob, createInterviewSession, type JobCard, type Profile } from '../api/hrflow'
 
@@ -10,12 +11,7 @@ interface Props {
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-6 w-6">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-11 w-11 object-contain" />
       <span className="text-xl font-bold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -92,7 +88,7 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
   const avgScore = computeAvg(matchScore, interviewScore)
   const date = profile.created_at
   const formattedDate = date
-    ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null
 
   return (
@@ -127,7 +123,7 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
                 </p>
               )}
               {formattedDate && (
-                <p className="text-[11px] text-zinc-700 mt-0.5">Candidature le {formattedDate}</p>
+                <p className="text-[11px] text-zinc-700 mt-0.5">Applied on {formattedDate}</p>
               )}
             </div>
           </div>
@@ -140,7 +136,7 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
                   <path d="M5 5V4a3 3 0 0 1 6 0v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-zinc-300">{latestExp.title ?? 'Poste'}</p>
+                  <p className="truncate text-xs font-medium text-zinc-300">{latestExp.title ?? 'Position'}</p>
                   {latestExp.company && <p className="truncate text-[11px] text-zinc-500">{latestExp.company}</p>}
                 </div>
               </div>
@@ -152,7 +148,7 @@ function ProfileCard({ profile, matchScore, onClick }: { profile: Profile; match
                   <path d="M5 7.5V11c1 1 5 1 6 0V7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-zinc-300">{latestEdu.title ?? 'Formation'}</p>
+                  <p className="truncate text-xs font-medium text-zinc-300">{latestEdu.title ?? 'Education'}</p>
                   {latestEdu.school && <p className="truncate text-[11px] text-zinc-500">{latestEdu.school}</p>}
                 </div>
               </div>
@@ -227,7 +223,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
       setCandidateLink(session.candidate_link)
       setLinkState('ready')
     } catch (err) {
-      setLinkError(err instanceof Error ? err.message : 'Erreur')
+      setLinkError(err instanceof Error ? err.message : 'Error')
       setLinkState('idle')
     }
   }
@@ -249,7 +245,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
           setMatchScores(scores)
         }
       })
-      .catch(err => setError(err instanceof Error ? err.message : 'Erreur'))
+      .catch(err => setError(err instanceof Error ? err.message : 'Error'))
       .finally(() => setLoading(false))
   }, [job.key])
 
@@ -257,7 +253,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
     <div className="min-h-screen text-zinc-50">
       <header className="fixed inset-x-0 top-0 z-10 flex h-28 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-10 backdrop-blur-md">
         <Logo />
-        <span className="text-xl font-bold text-brand hidden sm:block">Espace recruteur</span>
+        <span className="text-xl font-bold text-brand hidden sm:block">Recruiter space</span>
         <div className="flex items-center gap-3">
           {linkState !== 'ready' && (
             <button
@@ -271,7 +267,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Chargement…
+                  Loading…
                 </>
               ) : (
                 <>
@@ -279,7 +275,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
                     <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                     <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                   </svg>
-                  Créer un lien candidat
+                  Create candidate link
                 </>
               )}
             </button>
@@ -291,7 +287,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
             <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Retour
+            Back
           </button>
         </div>
       </header>
@@ -317,11 +313,11 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
                 )}
                 {job.created_at && (
                   <span className="text-xs text-zinc-600">
-                    Créé le {new Date(job.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    Créé le {new Date(job.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                 )}
                 <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand">
-                  {loading ? '…' : `${total} candidat${total !== 1 ? 's' : ''}`}
+                  {loading ? '…' : `${total} candidate${total !== 1 ? 's' : ''}`}
                 </span>
               </div>
             </div>
@@ -372,8 +368,8 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
                 const other = job.skills!.filter(s => !s.type || (s.type !== 'hard' && s.type !== 'soft'))
                 return (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Compétences</p>
-                    {[{ label: 'Techniques', items: hard }, { label: 'Soft skills', items: soft }, { label: 'Autres', items: other }]
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Skills</p>
+                    {[{ label: 'Technical', items: hard }, { label: 'Soft skills', items: soft }, { label: 'Other', items: other }]
                       .filter(g => g.items.length > 0)
                       .map(g => (
                         <div key={g.label}>
@@ -392,7 +388,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
               {/* Languages */}
               {job.languages && job.languages.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Langues</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Languages</p>
                   <div className="flex flex-wrap gap-1.5">
                     {job.languages.map((l, i) => (
                       <span key={i} className="rounded-md border border-zinc-700 bg-zinc-800/50 px-2.5 py-1 text-xs text-zinc-300">
@@ -425,7 +421,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
               if (!questions.length) return null
               return (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Questions d'entretien</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Interview questions</p>
                   <ol className="space-y-1.5 list-none">
                     {questions.map((q, i) => (
                       <li key={i} className="flex items-start gap-2">
@@ -455,7 +451,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
                     <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 text-brand">
                       <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Copié
+                    Copied
                   </>
                 ) : (
                   <>
@@ -463,7 +459,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
                       <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
                       <path d="M3 11V3.5A1.5 1.5 0 014.5 2H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                     </svg>
-                    Copier
+                    Copy
                   </>
                 )}
               </button>
@@ -494,7 +490,7 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
 
           {!loading && profiles.length === 0 && !error && (
             <div className="rounded-2xl border border-dashed border-zinc-800 px-4 py-12 text-center">
-              <p className="text-sm text-zinc-600">Aucun candidat pour ce poste.</p>
+              <p className="text-sm text-zinc-600">No candidates for this position.</p>
             </div>
           )}
 
@@ -504,8 +500,8 @@ export default function RhJobPage({ job, onBack, onOpenProfile }: Props) {
               <div className="flex items-center justify-end gap-2 pr-1">
                 {([
                   { field: 'match' as const, label: 'Matching', activeColor: 'text-brand' },
-                  { field: 'interview' as const, label: 'Entretien', activeColor: 'text-amber-400' },
-                  { field: 'moyenne' as const, label: 'Moyenne', activeColor: 'text-zinc-300' },
+                  { field: 'interview' as const, label: 'Interview', activeColor: 'text-amber-400' },
+                  { field: 'moyenne' as const, label: 'Average', activeColor: 'text-zinc-300' },
                 ]).map(({ field, label, activeColor }) => {
                   const active = sortField === field
                   return (

@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useState, useRef } from 'react'
 import { saveQuestions } from '../api/hrflow'
 import type { SetupJobResponse } from '../api/hrflow'
@@ -12,12 +13,7 @@ interface Props {
 function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-7 w-7 object-contain" />
       <span className="text-sm font-semibold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -84,7 +80,7 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
           <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
             <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Retour
+          Back
         </button>
       </header>
 
@@ -93,21 +89,21 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
 
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-50">Questions techniques</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-50">Interview questions</h1>
               <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand">
                 {questions.length}
               </span>
             </div>
             <p className="text-xs text-zinc-500">
               Ref. <span className="font-mono text-zinc-400">{result.job_reference}</span>
-              {' · '}Glissez pour réordonner, survolez pour supprimer.
+              {' · '}Drag to reorder, hover to delete.
             </p>
           </div>
 
           <div className="space-y-2">
             {questions.length === 0 && (
               <div className="rounded-xl border border-dashed border-zinc-800 px-4 py-8 text-center">
-                <p className="text-sm text-zinc-600">Aucune question — ajoutez-en une ci-dessous.</p>
+                <p className="text-sm text-zinc-600">No questions — add one below.</p>
               </div>
             )}
             {questions.map((q, i) => (
@@ -137,7 +133,7 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
                 <p className="flex-1 text-sm leading-relaxed text-zinc-200">{q}</p>
                 <button
                   onClick={() => deleteQuestion(i)}
-                  title="Supprimer"
+                  title="Delete"
                   className="mt-0.5 shrink-0 text-zinc-700 opacity-0 transition-all hover:text-red-400 group-hover:opacity-100"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
@@ -154,7 +150,7 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
               value={newQuestion}
               onChange={e => setNewQuestion(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion() } }}
-              placeholder="Ajouter une question personnalisée…"
+              placeholder="Add a custom question…"
               className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-50 placeholder-zinc-600 transition-all focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             />
             <button
@@ -183,7 +179,7 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
               <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
                 <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Retour
+              Back
             </button>
             <button
               onClick={async () => {
@@ -193,7 +189,7 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
                   await saveQuestions(result.job_key, result.job_title ?? '', questions)
                   onContinue(questions)
                 } catch (err) {
-                  setSaveError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+                  setSaveError(err instanceof Error ? err.message : 'Error saving questions')
                 } finally {
                   setSaving(false)
                 }
@@ -207,11 +203,11 @@ export default function RhQuestionsPage({ result, onBack, onContinue }: Props) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Sauvegarde…
+                  Saving…
                 </>
               ) : (
                 <>
-                  Continuer
+                  Continue
                   <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none">
                     <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

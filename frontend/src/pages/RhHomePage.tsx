@@ -1,5 +1,6 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useEffect, useState } from 'react'
-import { listJobs, type JobCard } from '../api/hrflow'
+import { listJobs, getProfilesForJob, type JobCard } from '../api/hrflow'
 
 interface Props {
   recentJob: JobCard | null
@@ -10,12 +11,7 @@ interface Props {
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-6 w-6">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-11 w-11 object-contain" />
       <span className="text-xl font-bold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -31,12 +27,12 @@ function SkillBadge({ name }: { name: string }) {
   )
 }
 
-function JobCardItem({ job, onClick }: { job: JobCard; onClick: () => void }) {
+function JobCardItem({ job, candidateCount, onClick }: { job: JobCard; candidateCount: number | null; onClick: () => void }) {
   const skills = job.skills?.slice(0, 3) ?? []
   const hasMore = (job.skills?.length ?? 0) > 3
   const date = job.updated_at ?? job.created_at
   const formattedDate = date
-    ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    ? new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
     : null
 
   return (
@@ -48,7 +44,6 @@ function JobCardItem({ job, onClick }: { job: JobCard; onClick: () => void }) {
         boxShadow: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 4px 20px rgba(0,0,0,0.3)',
       }}
     >
-      {/* Glossy highlight */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-white/[0.03] to-transparent rounded-t-2xl" />
 
@@ -57,12 +52,25 @@ function JobCardItem({ job, onClick }: { job: JobCard; onClick: () => void }) {
           <p className="text-sm font-semibold leading-snug text-zinc-100 group-hover:text-white line-clamp-2">
             {job.name}
           </p>
-          <svg
-            viewBox="0 0 16 16" fill="none"
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-700 transition-all group-hover:translate-x-0.5 group-hover:text-brand"
-          >
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <div className="flex items-center gap-2 shrink-0">
+            {candidateCount !== null && (
+              <span className="flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                <svg viewBox="0 0 16 16" fill="none" className="h-2.5 w-2.5">
+                  <circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M1 13c0-2.5 2-4 5-4s5 1.5 5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  <circle cx="12" cy="5" r="2" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M14 13c0-1.5-1-2.5-3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+                {candidateCount}
+              </span>
+            )}
+            <svg
+              viewBox="0 0 16 16" fill="none"
+              className="h-3.5 w-3.5 text-zinc-700 transition-all group-hover:translate-x-0.5 group-hover:text-brand"
+            >
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
         {job.summary && (
@@ -102,18 +110,22 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
   const [jobs, setJobs] = useState<JobCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [candidateCounts, setCandidateCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     listJobs()
       .then(fetched => {
-        if (recentJob) {
-          const alreadyIn = fetched.some(j => j.key === recentJob.key)
-          setJobs(alreadyIn ? fetched : [recentJob, ...fetched])
-        } else {
-          setJobs(fetched)
-        }
+        const all = recentJob
+          ? fetched.some(j => j.key === recentJob.key) ? fetched : [recentJob, ...fetched]
+          : fetched
+        setJobs(all)
+        all.forEach(job => {
+          getProfilesForJob(job.key, 1, 1)
+            .then(({ total }) => setCandidateCounts(prev => ({ ...prev, [job.key]: total })))
+            .catch(() => {})
+        })
       })
-      .catch(err => setError(err instanceof Error ? err.message : 'Erreur'))
+      .catch(err => setError(err instanceof Error ? err.message : 'Error'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -121,7 +133,7 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
     <div className="min-h-screen text-zinc-50">
       <header className="fixed inset-x-0 top-0 z-10 flex h-28 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-10 backdrop-blur-md">
         <Logo />
-        <span className="text-xl font-bold text-brand hidden sm:block">Espace recruteur</span>
+        <span className="text-xl font-bold text-brand hidden sm:block">Recruiter space</span>
         <button
           onClick={onNewSession}
           className="flex items-center gap-2.5 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-zinc-950 transition-all hover:bg-brand-dim active:scale-[0.99]"
@@ -129,7 +141,7 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
           <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-          Nouvelle session
+          New session
         </button>
       </header>
 
@@ -137,9 +149,9 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
         <div className="w-full max-w-6xl space-y-6">
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-50">Sessions d'entretien</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-50">Interview sessions</h1>
             <p className="text-sm text-zinc-500">
-              {loading ? 'Chargement…' : `${jobs.length} offre${jobs.length !== 1 ? 's' : ''} sur le board`}
+              {loading ? 'Loading…' : `${jobs.length} job${jobs.length !== 1 ? 's' : ''} on the board`}
             </p>
           </div>
 
@@ -160,12 +172,12 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
 
           {!loading && jobs.length === 0 && !error && (
             <div className="rounded-2xl border border-dashed border-zinc-800 px-4 py-12 text-center">
-              <p className="text-sm text-zinc-600">Aucune offre indexée sur ce board.</p>
+              <p className="text-sm text-zinc-600">No jobs indexed on this board.</p>
               <button
                 onClick={onNewSession}
                 className="mt-4 text-sm font-medium text-brand transition-colors hover:text-brand/80"
               >
-                Créer la première session →
+                Create the first session →
               </button>
             </div>
           )}
@@ -173,7 +185,7 @@ export default function RhHomePage({ recentJob, onNewSession, onOpenJob }: Props
           {!loading && jobs.length > 0 && (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {jobs.map(job => (
-                <JobCardItem key={job.key} job={job} onClick={() => onOpenJob(job)} />
+                <JobCardItem key={job.key} job={job} candidateCount={candidateCounts[job.key] ?? null} onClick={() => onOpenJob(job)} />
               ))}
             </div>
           )}

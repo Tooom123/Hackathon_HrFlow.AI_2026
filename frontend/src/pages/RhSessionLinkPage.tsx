@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useState, useEffect } from 'react'
 import { createInterviewSession, type CreateSessionResponse } from '../api/hrflow'
 import StepIndicator from '../components/StepIndicator'
@@ -11,12 +12,7 @@ interface Props {
 function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-7 w-7 object-contain" />
       <span className="text-sm font-semibold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -33,7 +29,7 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
   useEffect(() => {
     createInterviewSession(jobKey)
       .then(setSession)
-      .catch(err => setError(err instanceof Error ? err.message : 'Erreur lors de la création'))
+      .catch(err => setError(err instanceof Error ? err.message : 'Error creating session'))
       .finally(() => setLoading(false))
   }, [jobKey])
 
@@ -57,10 +53,10 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
 
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-zinc-50">
-              Session créée
+              Session created
             </h1>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Partagez ce lien avec le candidat pour qu'il puisse déposer son CV et passer l'entretien.
+              Share this link with the candidate so they can upload their CV and start the interview.
             </p>
           </div>
 
@@ -70,7 +66,7 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
-              <span className="text-sm text-zinc-400">Création de la session…</span>
+              <span className="text-sm text-zinc-400">Creating session…</span>
             </div>
           )}
 
@@ -98,7 +94,7 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-zinc-400">Lien candidat</label>
+                  <label className="block text-xs font-medium text-zinc-400">Candidate link</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -115,7 +111,7 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
                           <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4 text-brand">
                             <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                          Copié
+                          Copied
                         </>
                       ) : (
                         <>
@@ -123,7 +119,7 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
                             <rect x="5" y="5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
                             <path d="M3 11V3.5A1.5 1.5 0 014.5 2H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                           </svg>
-                          Copier
+                          Copy
                         </>
                       )}
                     </button>
@@ -136,7 +132,7 @@ export default function RhSessionLinkPage({ jobKey, jobTitle, onDone }: Props) {
                 className="group w-full rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-zinc-950 transition-all hover:bg-brand-dim active:scale-[0.99]"
               >
                 <span className="flex items-center justify-center gap-2">
-                  Retour à l'accueil
+                  Back to home
                   <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none">
                     <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

@@ -1,3 +1,4 @@
+import poulpeLogo from '../../poulpelogo.png'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getSessionStatus, uploadCV, joinInterviewSession } from '../api/hrflow'
@@ -7,12 +8,7 @@ type Phase = 'loading' | 'ready' | 'uploading' | 'joining' | 'error'
 function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand">
-        <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
-          <circle cx="8" cy="8" r="5.5" stroke="white" strokeWidth="1.5" />
-          <path d="M8 5v3.5l2 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </div>
+      <img src={poulpeLogo} alt="FirstRound" className="h-7 w-7 object-contain" />
       <span className="text-sm font-semibold tracking-tight text-zinc-100">
         First<span className="text-brand">Round</span>
       </span>
@@ -46,7 +42,7 @@ export default function CandidateUploadPage() {
         setPhase('ready')
       })
       .catch(err => {
-        setError(err instanceof Error ? err.message : 'Session introuvable')
+        setError(err instanceof Error ? err.message : 'Session not found')
         setPhase('error')
       })
   }, [sessionId])
@@ -87,7 +83,7 @@ export default function CandidateUploadPage() {
 
       navigate(`/session/${sessionId}/interview`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      setError(err instanceof Error ? err.message : 'An error occurred')
       setPhase('ready')
     }
   }
@@ -100,7 +96,7 @@ export default function CandidateUploadPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
           </svg>
-          <span className="text-sm text-zinc-400">Chargement de la session…</span>
+          <span className="text-sm text-zinc-400">Loading session…</span>
         </div>
       </div>
     )
@@ -113,7 +109,7 @@ export default function CandidateUploadPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-950/50 border border-red-900/50">
             <span className="text-lg">⚠</span>
           </div>
-          <h1 className="text-xl font-bold text-zinc-100">Session introuvable</h1>
+          <h1 className="text-xl font-bold text-zinc-100">Session not found</h1>
           <p className="text-sm text-zinc-400">{error}</p>
         </div>
       </div>
@@ -126,7 +122,7 @@ export default function CandidateUploadPage() {
     <div className="min-h-screen text-zinc-50">
       <header className="fixed inset-x-0 top-0 z-10 flex h-14 items-center justify-between border-b border-zinc-800/60 bg-zinc-950/80 px-6 backdrop-blur-md">
         <Logo />
-        <span className="text-xs font-medium text-zinc-500">Espace candidat</span>
+        <span className="text-xs font-medium text-zinc-500">Candidate space</span>
         <div />
       </header>
 
@@ -135,24 +131,24 @@ export default function CandidateUploadPage() {
 
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-zinc-50">
-              Entretien — {jobTitle}
+              Interview — {jobTitle}
             </h1>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Déposez votre CV au format PDF puis lancez l'entretien. Vous répondrez à {totalQuestions} questions en conversation avec notre IA.
+              Upload your CV in PDF format then start the interview. You will answer {totalQuestions} questions in conversation with our AI.
             </p>
           </div>
 
           {/* Email */}
           <div className="space-y-1.5">
             <label htmlFor="candidate-email" className="block text-sm font-medium text-zinc-300">
-              Adresse e-mail <span className="text-zinc-600">(optionnel — pour être recontacté)</span>
+              Email address <span className="text-zinc-600">(optional — to be contacted)</span>
             </label>
             <input
               id="candidate-email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="prenom.nom@exemple.com"
+              placeholder="firstname.lastname@example.com"
               className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-brand focus:ring-1 focus:ring-brand/30"
             />
           </div>
@@ -192,7 +188,7 @@ export default function CandidateUploadPage() {
                   onClick={(e) => { e.stopPropagation(); setFile(null) }}
                   className="text-xs text-zinc-500 underline transition-colors hover:text-zinc-300"
                 >
-                  Changer de fichier
+                  Change file
                 </button>
               </div>
             ) : (
@@ -205,10 +201,10 @@ export default function CandidateUploadPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-zinc-300">
-                    Glissez votre CV ici
+                    Drop your CV here
                   </p>
                   <p className="mt-1 text-xs text-zinc-600">
-                    ou cliquez pour parcourir — PDF uniquement, 10 Mo max
+                    or click to browse — PDF only, 10 MB max
                   </p>
                 </div>
               </div>
@@ -233,11 +229,11 @@ export default function CandidateUploadPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                 </svg>
-                {phase === 'uploading' ? 'Envoi du CV…' : 'Préparation de l\'entretien…'}
+                {phase === 'uploading' ? 'Uploading CV…' : 'Preparing the interview…'}
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
-                Lancer l'entretien
+                Start the interview
                 <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
