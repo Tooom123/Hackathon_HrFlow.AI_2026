@@ -143,3 +143,4 @@ The app is available at `http://localhost:5173`.
 | `WHISPER_LANGUAGE`  | Transcription language                  | `fr`                                   |
 | `TTS_VOICE`         | Edge-TTS voice name                     | `fr-FR-HenriNeural`                    |
 | `FRONTEND_BASE_URL` | Frontend URL, used for candidate links  | `http://localhost:5173`                |
+
